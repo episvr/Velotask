@@ -40,6 +40,17 @@ subprojects {
                 } catch (e: Exception) {
                      println("Failed to set namespace for ${project.name}: ${e.message}")
                 }
+
+                try {
+                    val compileOptions = android.javaClass.getMethod("getCompileOptions").invoke(android)
+                    val setSourceCompatibility = compileOptions.javaClass.getMethod("setSourceCompatibility", JavaVersion::class.java)
+                    val setTargetCompatibility = compileOptions.javaClass.getMethod("setTargetCompatibility", JavaVersion::class.java)
+                    
+                    setSourceCompatibility.invoke(compileOptions, JavaVersion.VERSION_17)
+                    setTargetCompatibility.invoke(compileOptions, JavaVersion.VERSION_17)
+                } catch (e: Exception) {
+                    println("Failed to set Java 17 for ${project.name}: ${e.message}")
+                }
             }
         }
     }

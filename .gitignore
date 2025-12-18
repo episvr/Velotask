@@ -96,3 +96,7 @@ $RECYCLE.BIN/
 
 # Build Files
 problems-report.html
+
+# Generated files
+*.g.dart
+*.freezed.dart
