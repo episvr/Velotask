@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:velotask/models/todo.dart';
+import 'package:velotask/screens/settings_screen.dart';
 import 'package:velotask/screens/timeline_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:velotask/main.dart';
 
 class HomeAppBar extends StatelessWidget {
   final List<Todo> todos;
+  final VoidCallback? onSettingsClosed;
 
-  const HomeAppBar({super.key, required this.todos});
+  const HomeAppBar({super.key, required this.todos, this.onSettingsClosed});
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +36,19 @@ class HomeAppBar extends StatelessWidget {
         ],
       ),
       actions: [
+        IconButton(
+          icon: Icon(
+            Icons.settings_outlined,
+            color: Theme.of(context).primaryColor,
+          ),
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            );
+            onSettingsClosed?.call();
+          },
+        ),
         ValueListenableBuilder<ThemeMode>(
           valueListenable: themeNotifier,
           builder: (context, mode, child) {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:velotask/models/todo.dart';
 import 'package:velotask/theme/app_theme.dart';
 
 class DialogInputRow extends StatelessWidget {
@@ -38,64 +37,6 @@ class DialogInputRow extends StatelessWidget {
               : child,
         ),
       ],
-    );
-  }
-}
-
-class TaskTypeSelector extends StatelessWidget {
-  final TaskType selectedType;
-  final Function(TaskType) onTypeChanged;
-
-  const TaskTypeSelector({
-    super.key,
-    required this.selectedType,
-    required this.onTypeChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _buildTypeTag(context, TaskType.ddl, 'DDL'),
-        const SizedBox(width: 8),
-        _buildTypeTag(context, TaskType.tdl, 'TDL'),
-        const SizedBox(width: 8),
-        _buildTypeTag(context, TaskType.wtd, 'WTD'),
-      ],
-    );
-  }
-
-  Widget _buildTypeTag(BuildContext context, TaskType type, String label) {
-    final isSelected = selectedType == type;
-    return InkWell(
-      onTap: () => onTypeChanged(type),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).primaryColor
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected
-                ? Theme.of(context).primaryColor
-                : Theme.of(
-                    context,
-                  ).colorScheme.secondary.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected
-                ? Theme.of(context).colorScheme.surface
-                : Theme.of(context).colorScheme.secondary,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 12,
-          ),
-        ),
-      ),
     );
   }
 }
@@ -179,6 +120,7 @@ class DialogDatePicker extends StatelessWidget {
   final DateTime? date;
   final Function(DateTime?) onSelect;
   final bool isOptional;
+  final DateTime? firstDate;
 
   const DialogDatePicker({
     super.key,
@@ -186,6 +128,7 @@ class DialogDatePicker extends StatelessWidget {
     required this.date,
     required this.onSelect,
     this.isOptional = false,
+    this.firstDate,
   });
 
   @override
@@ -195,10 +138,18 @@ class DialogDatePicker extends StatelessWidget {
 
     return InkWell(
       onTap: () async {
+        final initialDate = date ?? DateTime.now();
+        final effectiveFirstDate = firstDate ?? DateTime(2000);
+
+        // Ensure initialDate is not before firstDate
+        final validInitialDate = initialDate.isBefore(effectiveFirstDate)
+            ? effectiveFirstDate
+            : initialDate;
+
         final picked = await showDatePicker(
           context: context,
-          initialDate: date ?? DateTime.now(),
-          firstDate: DateTime(2000),
+          initialDate: validInitialDate,
+          firstDate: effectiveFirstDate,
           lastDate: DateTime(2100),
           builder: (context, child) {
             return Theme(

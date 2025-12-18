@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo.dart';
 import 'package:velotask/theme/app_theme.dart';
 
@@ -7,6 +8,7 @@ class TodoItem extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
+  final List<Tag>? visibleTags; // For testing or explicit tag display
 
   const TodoItem({
     super.key,
@@ -14,6 +16,7 @@ class TodoItem extends StatelessWidget {
     required this.onToggle,
     required this.onDelete,
     required this.onEdit,
+    this.visibleTags,
   });
 
   Color _getImportanceColor() {
@@ -115,29 +118,48 @@ class TodoItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          margin: const EdgeInsets.only(right: 6),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.secondary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            todo.taskType.name.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.secondary,
-                            ),
+                    if ((visibleTags ?? todo.tags).isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: (visibleTags ?? todo.tags).map((tag) {
+                              Color tagColor = Colors.blue;
+                              if (tag.color != null) {
+                                try {
+                                  tagColor = Color(
+                                    int.parse(
+                                      tag.color!.replaceAll('#', '0xFF'),
+                                    ),
+                                  );
+                                } catch (_) {}
+                              }
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                margin: const EdgeInsets.only(right: 6),
+                                decoration: BoxDecoration(
+                                  color: tagColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  tag.name.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: tagColor,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ),
+                      ),
+                    Row(
+                      children: [
                         Expanded(
                           child: AnimatedDefaultTextStyle(
                             duration: const Duration(milliseconds: 200),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:velotask/screens/home_screen.dart';
+import 'package:velotask/screens/main_screen.dart';
 import 'package:velotask/theme/app_theme.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: currentMode,
-          home: const HomeScreen(),
+          home: const MainScreen(),
           debugShowCheckedModeBanner: false,
         );
       },

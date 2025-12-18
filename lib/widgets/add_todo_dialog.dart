@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo.dart';
+import 'package:velotask/services/todo_storage.dart';
 import 'package:velotask/widgets/dialog_components.dart';
 
 class AddTodoDialog extends StatefulWidget {
@@ -10,7 +12,7 @@ class AddTodoDialog extends StatefulWidget {
     DateTime? startDate,
     DateTime? ddl,
     int importance,
-    TaskType taskType,
+    List<Tag> tags,
   )
   onAdd;
 
@@ -26,11 +28,14 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
   DateTime _startDate = DateTime.now();
   DateTime? _ddl;
   int _importance = 1;
-  TaskType _taskType = TaskType.tdl;
+  List<Tag> _availableTags = [];
+  List<Tag> _selectedTags = [];
+  final TodoStorage _storage = TodoStorage();
 
   @override
   void initState() {
     super.initState();
+    _loadTags();
     if (widget.todo != null) {
       _titleController.text = widget.todo!.title;
       _descController.text = widget.todo!.description;
@@ -38,8 +43,15 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
           widget.todo!.startDate ?? widget.todo!.createdAt ?? DateTime.now();
       _ddl = widget.todo!.ddl;
       _importance = widget.todo!.importance;
-      _taskType = widget.todo!.taskType;
+      _selectedTags = widget.todo!.tags.toList();
     }
+  }
+
+  Future<void> _loadTags() async {
+    final tags = await _storage.loadTags();
+    setState(() {
+      _availableTags = tags;
+    });
   }
 
   @override
@@ -126,8 +138,19 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                       child: DialogDatePicker(
                         label: 'From',
                         date: _startDate,
+                        firstDate: DateTime.now().subtract(
+                          const Duration(days: 1),
+                        ), // Allow today
                         onSelect: (d) {
-                          if (d != null) setState(() => _startDate = d);
+                          if (d != null) {
+                            setState(() {
+                              _startDate = d;
+                              // If DDL is before new start date, reset it or adjust it
+                              if (_ddl != null && _ddl!.isBefore(d)) {
+                                _ddl = null;
+                              }
+                            });
+                          }
                         },
                       ),
                     ),
@@ -136,6 +159,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                       child: DialogDatePicker(
                         label: 'To',
                         date: _ddl,
+                        firstDate: _startDate,
                         onSelect: (d) => setState(() => _ddl = d),
                         isOptional: true,
                       ),
@@ -153,16 +177,60 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                   onPriorityChanged: (val) => setState(() => _importance = val),
                 ),
               ),
-              const SizedBox(height: 16),
 
-              // Task Type Row
-              DialogInputRow(
-                icon: Icons.category_outlined,
-                child: TaskTypeSelector(
-                  selectedType: _taskType,
-                  onTypeChanged: (val) => setState(() => _taskType = val),
+              // Tags Row
+              if (_availableTags.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                DialogInputRow(
+                  icon: Icons.label_outline,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: _availableTags.map((tag) {
+                      final isSelected = _selectedTags.any(
+                        (t) => t.id == tag.id,
+                      );
+                      Color tagColor = Colors.blue;
+                      if (tag.color != null) {
+                        try {
+                          tagColor = Color(
+                            int.parse(tag.color!.replaceAll('#', '0xFF')),
+                          );
+                        } catch (_) {}
+                      }
+                      return FilterChip(
+                        label: Text(tag.name),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedTags.add(tag);
+                            } else {
+                              _selectedTags.removeWhere((t) => t.id == tag.id);
+                            }
+                          });
+                        },
+                        backgroundColor: Colors.transparent,
+                        selectedColor: tagColor.withValues(alpha: 0.2),
+                        labelStyle: TextStyle(
+                          color: isSelected
+                              ? tagColor
+                              : Theme.of(context).colorScheme.onSurface,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: isSelected
+                                ? tagColor
+                                : Colors.grey.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        showCheckmark: false,
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -186,7 +254,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                 _startDate,
                 _ddl,
                 _importance,
-                _taskType,
+                _selectedTags,
               );
               Navigator.pop(context);
             }
