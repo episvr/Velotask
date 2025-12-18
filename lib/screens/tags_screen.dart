@@ -50,7 +50,15 @@ class _TagsScreenState extends State<TagsScreen> {
         '#${_selectedColor.toARGB32().toRadixString(16).substring(2)}';
     final newTag = Tag(name: name, color: colorHex);
 
-    await _storage.addTag(newTag);
+    try {
+      await _storage.addTag(newTag);
+    } catch (e) {
+      // If insertion failed (e.g., unique constraint), show a friendly message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Tag "${newTag.name}" already exists')),
+      );
+      return;
+    }
     _tagNameController.clear();
     setState(() {
       _selectedColor = Colors.blue;

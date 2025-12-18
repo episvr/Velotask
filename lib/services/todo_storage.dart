@@ -36,6 +36,22 @@ class TodoStorage {
 
   Future<void> addTag(Tag tag) async {
     await _init();
+    // Prevent unique index violation by checking for existing tag name first
+    final existing = await _isar!.tags
+        .filter()
+        .nameEqualTo(tag.name)
+        .findFirst();
+    if (existing != null) {
+      // If tag exists, update its color if different and return
+      if (existing.color != tag.color) {
+        existing.color = tag.color;
+        await _isar!.writeTxn(() async {
+          await _isar!.tags.put(existing);
+        });
+      }
+      return;
+    }
+
     await _isar!.writeTxn(() async {
       await _isar!.tags.put(tag);
     });
