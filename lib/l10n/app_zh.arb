@@ -32,6 +32,8 @@
   "today": "今天",
   "tomorrow": "明天",
   "language": "语言",
+  "english": "English",
+  "chinese": "中文",
   "tasks": "任务",
   "timeline": "时间轴",
   "completed": "已完成",

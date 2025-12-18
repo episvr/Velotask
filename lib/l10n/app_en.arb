@@ -32,6 +32,8 @@
   "today": "Today",
   "tomorrow": "Tomorrow",
   "language": "Language",
+  "english": "English",
+  "chinese": "中文",
   "tasks": "Tasks",
   "timeline": "Timeline",
   "completed": "COMPLETED",

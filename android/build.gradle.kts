@@ -22,10 +22,10 @@ subprojects {
             if (android != null) {
                 try {
                     val setCompileSdkVersion = android.javaClass.getMethod("setCompileSdkVersion", Int::class.java)
-                    setCompileSdkVersion.invoke(android, 35)
+                    setCompileSdkVersion.invoke(android, 36)
                     
                     val setBuildToolsVersion = android.javaClass.getMethod("setBuildToolsVersion", String::class.java)
-                    setBuildToolsVersion.invoke(android, "35.0.0")
+                    setBuildToolsVersion.invoke(android, "36.0.0")
                 } catch (e: Exception) {
                     println("Failed to set compileSdk/buildTools for ${project.name}: ${e.message}")
                 }

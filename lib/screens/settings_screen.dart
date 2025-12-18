@@ -88,7 +88,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 leading: const Icon(Icons.language),
                 title: Text(l10n.language),
                 subtitle: Text(
-                  currentLocale?.languageCode == 'zh' ? '中文' : 'English',
+                  currentLocale?.languageCode == 'zh'
+                      ? l10n.chinese
+                      : l10n.english,
                 ),
                 onTap: () => _showLanguageDialog(context, currentLocale),
               );
@@ -154,30 +156,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => SimpleDialog(
         title: Text(l10n.selectTheme),
         children: [
-          RadioListTile<ThemeMode>(
+          ListTile(
             title: Text(l10n.systemDefault),
-            value: ThemeMode.system,
-            groupValue: currentMode,
-            onChanged: (value) {
-              if (value != null) _setTheme(value);
+            trailing: currentMode == ThemeMode.system
+                ? const Icon(Icons.check)
+                : null,
+            onTap: () {
+              _setTheme(ThemeMode.system);
               Navigator.pop(context);
             },
           ),
-          RadioListTile<ThemeMode>(
+          ListTile(
             title: Text(l10n.lightMode),
-            value: ThemeMode.light,
-            groupValue: currentMode,
-            onChanged: (value) {
-              if (value != null) _setTheme(value);
+            trailing: currentMode == ThemeMode.light
+                ? const Icon(Icons.check)
+                : null,
+            onTap: () {
+              _setTheme(ThemeMode.light);
               Navigator.pop(context);
             },
           ),
-          RadioListTile<ThemeMode>(
+          ListTile(
             title: Text(l10n.darkMode),
-            value: ThemeMode.dark,
-            groupValue: currentMode,
-            onChanged: (value) {
-              if (value != null) _setTheme(value);
+            trailing: currentMode == ThemeMode.dark
+                ? const Icon(Icons.check)
+                : null,
+            onTap: () {
+              _setTheme(ThemeMode.dark);
               Navigator.pop(context);
             },
           ),
@@ -195,21 +200,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => SimpleDialog(
         title: Text(l10n.language),
         children: [
-          RadioListTile<String>(
-            title: const Text('English'),
-            value: 'en',
-            groupValue: effectiveLocale.languageCode,
-            onChanged: (value) {
-              if (value != null) _setLocale(Locale(value));
+          ListTile(
+            title: Text(l10n.english),
+            trailing: effectiveLocale.languageCode == 'en'
+                ? const Icon(Icons.check)
+                : null,
+            onTap: () {
+              _setLocale(const Locale('en'));
               Navigator.pop(context);
             },
           ),
-          RadioListTile<String>(
-            title: const Text('中文'),
-            value: 'zh',
-            groupValue: effectiveLocale.languageCode,
-            onChanged: (value) {
-              if (value != null) _setLocale(Locale(value));
+          ListTile(
+            title: Text(l10n.chinese),
+            trailing: effectiveLocale.languageCode == 'zh'
+                ? const Icon(Icons.check)
+                : null,
+            onTap: () {
+              _setLocale(const Locale('zh'));
               Navigator.pop(context);
             },
           ),
