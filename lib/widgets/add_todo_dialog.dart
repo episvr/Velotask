@@ -3,6 +3,7 @@ import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo.dart';
 import 'package:velotask/services/todo_storage.dart';
 import 'package:velotask/widgets/dialog_components.dart';
+import 'package:velotask/l10n/app_localizations.dart';
 
 class AddTodoDialog extends StatefulWidget {
   final Todo? todo;
@@ -63,10 +64,11 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: Text(
-        widget.todo == null ? '✨ New Task' : '✏️ Edit Task',
+        widget.todo == null ? l10n.newTask : l10n.editTask,
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       content: SingleChildScrollView(
@@ -88,7 +90,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'What to do?',
+                    hintText: l10n.titleHint,
                     hintStyle: TextStyle(
                       color: Colors.grey.withValues(alpha: 0.5),
                       fontWeight: FontWeight.normal,
@@ -112,7 +114,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                   controller: _descController,
                   style: const TextStyle(fontSize: 16),
                   decoration: InputDecoration(
-                    hintText: 'Add description...',
+                    hintText: l10n.descHint,
                     hintStyle: TextStyle(
                       color: Colors.grey.withValues(alpha: 0.5),
                     ),
@@ -136,7 +138,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                   children: [
                     Expanded(
                       child: DialogDatePicker(
-                        label: 'From',
+                        label: l10n.dateFrom,
                         date: _startDate,
                         firstDate: DateTime.now().subtract(
                           const Duration(days: 1),
@@ -157,7 +159,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DialogDatePicker(
-                        label: 'To',
+                        label: l10n.dateTo,
                         date: _ddl,
                         firstDate: _startDate,
                         onSelect: (d) => setState(() => _ddl = d),
@@ -243,7 +245,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
               context,
             ).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
-          child: const Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -268,7 +270,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           ),
           child: Text(
-            widget.todo == null ? 'Create' : 'Save',
+            widget.todo == null ? l10n.create : l10n.save,
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),

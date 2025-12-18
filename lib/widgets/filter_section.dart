@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo_filter.dart';
+import 'package:velotask/l10n/app_localizations.dart';
 
 class FilterSection extends StatelessWidget {
   final TodoFilter currentFilter;
@@ -28,13 +29,29 @@ class FilterSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _buildStatusChip(context, 'Active', TodoFilter.active),
+                _buildStatusChip(
+                  context,
+                  AppLocalizations.of(context)!.filterActive,
+                  TodoFilter.active,
+                ),
                 const SizedBox(width: 8),
-                _buildStatusChip(context, 'All', TodoFilter.all),
+                _buildStatusChip(
+                  context,
+                  AppLocalizations.of(context)!.filterAll,
+                  TodoFilter.all,
+                ),
                 const SizedBox(width: 8),
-                _buildStatusChip(context, 'Done', TodoFilter.completed),
+                _buildStatusChip(
+                  context,
+                  AppLocalizations.of(context)!.filterDone,
+                  TodoFilter.completed,
+                ),
                 const SizedBox(width: 8),
-                _buildStatusChip(context, 'Emergency', TodoFilter.highPriority),
+                _buildStatusChip(
+                  context,
+                  AppLocalizations.of(context)!.filterEmergency,
+                  TodoFilter.highPriority,
+                ),
               ],
             ),
           ),

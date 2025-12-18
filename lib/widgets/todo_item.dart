@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo.dart';
 import 'package:velotask/theme/app_theme.dart';
+import 'package:velotask/l10n/app_localizations.dart';
 
 class TodoItem extends StatelessWidget {
   final Todo todo;
@@ -30,16 +31,17 @@ class TodoItem extends StatelessWidget {
     }
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(BuildContext context, DateTime date) {
+    final l10n = AppLocalizations.of(context)!;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
     final target = DateTime(date.year, date.month, date.day);
 
     if (target == today) {
-      return 'Today';
+      return l10n.today;
     } else if (target == tomorrow) {
-      return 'Tomorrow';
+      return l10n.tomorrow;
     } else {
       return '${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
     }
@@ -208,10 +210,12 @@ class TodoItem extends StatelessWidget {
               width: 80,
               child: Builder(
                 builder: (context) {
+                  final l10n = AppLocalizations.of(context)!;
                   final dateStr = todo.ddl != null
-                      ? _formatDate(todo.ddl!)
+                      ? _formatDate(context, todo.ddl!)
                       : '-';
-                  final isUrgent = dateStr == 'Today' || dateStr == 'Tmrw';
+                  final isUrgent =
+                      dateStr == l10n.today || dateStr == l10n.tomorrow;
                   return Text(
                     dateStr,
                     style: TextStyle(
@@ -245,10 +249,10 @@ class TodoItem extends StatelessWidget {
                   ),
                   child: Text(
                     todo.importance == 2
-                        ? 'High'
+                        ? AppLocalizations.of(context)!.priorityHigh
                         : todo.importance == 0
-                        ? 'Low'
-                        : 'Med',
+                        ? AppLocalizations.of(context)!.priorityLow
+                        : AppLocalizations.of(context)!.priorityMed,
                     style: TextStyle(
                       fontSize: 10,
                       color: _getImportanceColor(),

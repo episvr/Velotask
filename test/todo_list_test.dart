@@ -1,11 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:velotask/l10n/app_localizations.dart';
 import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo.dart';
 import 'package:velotask/models/todo_filter.dart';
 import 'package:velotask/screens/todo_list_view.dart';
 import 'package:velotask/widgets/filter_section.dart';
 import 'package:velotask/widgets/todo_item.dart';
+
+Widget createLocalizedWidgetForTesting({required Widget child}) {
+  return MaterialApp(
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    supportedLocales: const [Locale('en'), Locale('zh')],
+    locale: const Locale('en'),
+    home: Scaffold(body: child),
+  );
+}
 
 void main() {
   group('TodoListView Filtering Tests', () {
@@ -22,20 +38,20 @@ void main() {
       final todos = [activeTodo, completedTodo, emergencyTodo];
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: TodoListView(
-              todos: todos,
-              tags: [],
-              isLoading: false,
-              onToggle: (_) {},
-              onDelete: (_) {},
-              onEdit: (_) {},
-              onRefreshTags: () {},
-            ),
+        createLocalizedWidgetForTesting(
+          child: TodoListView(
+            todos: todos,
+            tags: [],
+            isLoading: false,
+            onToggle: (_) {},
+            onDelete: (_) {},
+            onEdit: (_) {},
+            onRefreshTags: () {},
           ),
         ),
       );
+
+      await tester.pumpAndSettle(); // Wait for localizations to load
 
       // Initial state: Active filter is default
       // Should show Active Task and Emergency Task (since it's also active)
@@ -76,17 +92,16 @@ void main() {
       final todo = Todo(title: 'Test Todo', description: 'Test Description');
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: TodoItem(
-              todo: todo,
-              onToggle: () {},
-              onDelete: () {},
-              onEdit: () {},
-            ),
+        createLocalizedWidgetForTesting(
+          child: TodoItem(
+            todo: todo,
+            onToggle: () {},
+            onDelete: () {},
+            onEdit: () {},
           ),
         ),
       );
+      await tester.pumpAndSettle();
 
       expect(find.text('Test Todo'), findsOneWidget);
       expect(find.text('Test Description'), findsOneWidget);
@@ -97,18 +112,17 @@ void main() {
       final tag = Tag(name: 'Work', color: '#FF0000');
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: TodoItem(
-              todo: todo,
-              onToggle: () {},
-              onDelete: () {},
-              onEdit: () {},
-              visibleTags: [tag], // Inject tags for testing
-            ),
+        createLocalizedWidgetForTesting(
+          child: TodoItem(
+            todo: todo,
+            onToggle: () {},
+            onDelete: () {},
+            onEdit: () {},
+            visibleTags: [tag], // Inject tags for testing
           ),
         ),
       );
+      await tester.pumpAndSettle();
 
       expect(find.text('WORK'), findsOneWidget); // Tags are uppercased in UI
     });
@@ -117,19 +131,18 @@ void main() {
   group('FilterSection Tests', () {
     testWidgets('renders all filter options', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                FilterSection(
-                  currentFilter: TodoFilter.all,
-                  onFilterChanged: (filter, tag) {},
-                ),
-              ],
-            ),
+        createLocalizedWidgetForTesting(
+          child: CustomScrollView(
+            slivers: [
+              FilterSection(
+                currentFilter: TodoFilter.all,
+                onFilterChanged: (filter, tag) {},
+              ),
+            ],
           ),
         ),
       );
+      await tester.pumpAndSettle();
 
       expect(find.text('Active'), findsOneWidget);
       expect(find.text('All'), findsOneWidget);
@@ -143,21 +156,20 @@ void main() {
       TodoFilter? selectedFilter;
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                FilterSection(
-                  currentFilter: TodoFilter.all,
-                  onFilterChanged: (filter, tag) {
-                    selectedFilter = filter;
-                  },
-                ),
-              ],
-            ),
+        createLocalizedWidgetForTesting(
+          child: CustomScrollView(
+            slivers: [
+              FilterSection(
+                currentFilter: TodoFilter.all,
+                onFilterChanged: (filter, tag) {
+                  selectedFilter = filter;
+                },
+              ),
+            ],
           ),
         ),
       );
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Emergency'));
       expect(selectedFilter, TodoFilter.highPriority);

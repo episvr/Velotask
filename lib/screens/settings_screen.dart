@@ -4,6 +4,7 @@ import 'package:velotask/main.dart';
 import 'package:velotask/screens/tags_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:velotask/l10n/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -30,7 +31,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
       }
     } catch (e) {
-      // Fallback if package_info_plus fails or is not set up
       if (mounted) {
         setState(() {
           _version = '1.0.0';
@@ -45,36 +45,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString('theme_mode', mode.toString());
   }
 
+  Future<void> _setLocale(Locale? locale) async {
+    localeNotifier.value = locale;
+    final prefs = await SharedPreferences.getInstance();
+    if (locale != null) {
+      await prefs.setString('locale', locale.languageCode);
+    } else {
+      await prefs.remove('locale');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(l10n.settings)),
       body: ListView(
         children: [
-          _buildSectionHeader(context, 'General'),
+          _buildSectionHeader(context, l10n.general),
           ValueListenableBuilder<ThemeMode>(
             valueListenable: themeNotifier,
             builder: (context, currentMode, child) {
               return ListTile(
                 leading: const Icon(Icons.brightness_6_outlined),
-                title: const Text('Theme'),
+                title: Text(l10n.theme),
                 subtitle: Text(
                   currentMode == ThemeMode.system
-                      ? 'System Default'
+                      ? l10n.systemDefault
                       : currentMode == ThemeMode.dark
-                      ? 'Dark Mode'
-                      : 'Light Mode',
+                      ? l10n.darkMode
+                      : l10n.lightMode,
                 ),
                 onTap: () => _showThemeDialog(context, currentMode),
               );
             },
           ),
+          ValueListenableBuilder<Locale?>(
+            valueListenable: localeNotifier,
+            builder: (context, currentLocale, child) {
+              return ListTile(
+                leading: const Icon(Icons.language),
+                title: Text(l10n.language),
+                subtitle: Text(
+                  currentLocale?.languageCode == 'zh' ? '中文' : 'English',
+                ),
+                onTap: () => _showLanguageDialog(context, currentLocale),
+              );
+            },
+          ),
           const Divider(),
-          _buildSectionHeader(context, 'Organization'),
+          _buildSectionHeader(context, l10n.organization),
           ListTile(
             leading: const Icon(Icons.label_outline),
-            title: const Text('Manage Tags'),
-            subtitle: const Text('Create, edit, or delete tags'),
+            title: Text(l10n.manageTags),
+            subtitle: Text(l10n.manageTagsSubtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.push(
@@ -84,16 +109,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(),
-          _buildSectionHeader(context, 'About'),
+          _buildSectionHeader(context, l10n.about),
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: const Text('Version'),
+            title: Text(l10n.version),
             subtitle: Text(_version),
           ),
           ListTile(
             leading: const Icon(Icons.code),
-            title: const Text('Source Code'),
-            subtitle: const Text('View on GitHub'),
+            title: Text(l10n.sourceCode),
+            subtitle: Text(l10n.viewOnGithub),
             onTap: () async {
               final uri = Uri.parse(
                 'https://github.com/Source-of-USTB/Velotask',
@@ -123,34 +148,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showThemeDialog(BuildContext context, ThemeMode currentMode) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('Select Theme'),
+        title: Text(l10n.selectTheme),
         children: [
-          RadioGroup<ThemeMode>(
+          RadioListTile<ThemeMode>(
+            title: Text(l10n.systemDefault),
+            value: ThemeMode.system,
             groupValue: currentMode,
             onChanged: (value) {
               if (value != null) _setTheme(value);
               Navigator.pop(context);
             },
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RadioListTile<ThemeMode>(
-                  title: const Text('System Default'),
-                  value: ThemeMode.system,
-                ),
-                RadioListTile<ThemeMode>(
-                  title: const Text('Light Mode'),
-                  value: ThemeMode.light,
-                ),
-                RadioListTile<ThemeMode>(
-                  title: const Text('Dark Mode'),
-                  value: ThemeMode.dark,
-                ),
-              ],
-            ),
+          ),
+          RadioListTile<ThemeMode>(
+            title: Text(l10n.lightMode),
+            value: ThemeMode.light,
+            groupValue: currentMode,
+            onChanged: (value) {
+              if (value != null) _setTheme(value);
+              Navigator.pop(context);
+            },
+          ),
+          RadioListTile<ThemeMode>(
+            title: Text(l10n.darkMode),
+            value: ThemeMode.dark,
+            groupValue: currentMode,
+            onChanged: (value) {
+              if (value != null) _setTheme(value);
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLanguageDialog(BuildContext context, Locale? currentLocale) {
+    final l10n = AppLocalizations.of(context)!;
+    final effectiveLocale = currentLocale ?? const Locale('en');
+
+    showDialog(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(l10n.language),
+        children: [
+          RadioListTile<String>(
+            title: const Text('English'),
+            value: 'en',
+            groupValue: effectiveLocale.languageCode,
+            onChanged: (value) {
+              if (value != null) _setLocale(Locale(value));
+              Navigator.pop(context);
+            },
+          ),
+          RadioListTile<String>(
+            title: const Text('中文'),
+            value: 'zh',
+            groupValue: effectiveLocale.languageCode,
+            onChanged: (value) {
+              if (value != null) _setLocale(Locale(value));
+              Navigator.pop(context);
+            },
           ),
         ],
       ),

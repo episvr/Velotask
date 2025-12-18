@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:velotask/theme/app_theme.dart';
+import 'package:velotask/l10n/app_localizations.dart';
 
 class DialogInputRow extends StatelessWidget {
   final IconData icon;
@@ -53,13 +54,19 @@ class PrioritySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
-        _buildPriorityTag(context, 0, 'Low', AppTheme.lowPriority),
+        _buildPriorityTag(context, 0, l10n.priorityLow, AppTheme.lowPriority),
         const SizedBox(width: 8),
-        _buildPriorityTag(context, 1, 'Med', AppTheme.mediumPriority),
+        _buildPriorityTag(
+          context,
+          1,
+          l10n.priorityMed,
+          AppTheme.mediumPriority,
+        ),
         const SizedBox(width: 8),
-        _buildPriorityTag(context, 2, 'High', AppTheme.highPriority),
+        _buildPriorityTag(context, 2, l10n.priorityHigh, AppTheme.highPriority),
       ],
     );
   }
@@ -135,6 +142,7 @@ class DialogDatePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final secondaryColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+    final l10n = AppLocalizations.of(context)!;
 
     return InkWell(
       onTap: () async {
@@ -189,7 +197,7 @@ class DialogDatePicker extends StatelessWidget {
             Text(label, style: TextStyle(color: secondaryColor, fontSize: 12)),
             Text(
               date == null
-                  ? (isOptional ? '--/--' : 'Today')
+                  ? (isOptional ? '--/--' : l10n.today)
                   : '${date!.month}/${date!.day}',
               style: TextStyle(
                 color: theme.primaryColor,

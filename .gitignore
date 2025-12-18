@@ -100,3 +100,6 @@ problems-report.html
 # Generated files
 *.g.dart
 *.freezed.dart
+
+# Localization generated files
+lib/l10n/app_*.dart
