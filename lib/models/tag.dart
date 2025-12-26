@@ -1,4 +1,5 @@
 import 'package:isar/isar.dart';
+import 'package:velotask/utils/logger.dart';
 
 part 'tag.g.dart';
 
@@ -11,5 +12,9 @@ class Tag {
 
   String? color; // Hex string, e.g., "#FF0000"
 
-  Tag({required this.name, this.color});
+  static final Logger _logger = AppLogger.getLogger('Tag');
+
+  Tag({required this.name, this.color}) {
+    _logger.fine('Tag instance created: name=$name, color=$color');
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:velotask/models/tag.dart';
 import 'package:velotask/services/todo_storage.dart';
+import 'package:velotask/utils/logger.dart';
 
 class TagsScreen extends StatefulWidget {
   const TagsScreen({super.key});
@@ -14,6 +15,7 @@ class _TagsScreenState extends State<TagsScreen> {
   List<Tag> _tags = [];
   final TextEditingController _tagNameController = TextEditingController();
   Color _selectedColor = Colors.blue;
+  static final Logger _logger = AppLogger.getLogger('TagsScreen');
 
   final List<Color> _availableColors = [
     Colors.blue,
@@ -31,19 +33,27 @@ class _TagsScreenState extends State<TagsScreen> {
   @override
   void initState() {
     super.initState();
+    _logger.info('TagsScreen initialized');
     _loadTags();
   }
 
   Future<void> _loadTags() async {
-    final tags = await _storage.loadTags();
-    setState(() {
-      _tags = tags;
-    });
+    try {
+      final tags = await _storage.loadTags();
+      setState(() {
+        _tags = tags;
+      });
+    } catch (e) {
+      _logger.severe('Failed to load tags', e);
+    }
   }
 
   Future<void> _addTag() async {
     final name = _tagNameController.text.trim();
-    if (name.isEmpty) return;
+    if (name.isEmpty) {
+      _logger.warning('Attempted to add tag with empty name');
+      return;
+    }
 
     // Use toARGB32() instead of deprecated .value
     final colorHex =
@@ -52,13 +62,21 @@ class _TagsScreenState extends State<TagsScreen> {
 
     try {
       await _storage.addTag(newTag);
+      _logger.info('Successfully added tag: ${newTag.name}');
     } catch (e) {
       // If insertion failed (e.g., unique constraint), show a friendly message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tag "${newTag.name}" already exists')),
+          SnackBar(
+            content: Text(
+              e is TagAlreadyExistsException
+                  ? e.toString()
+                  : 'Failed to add tag',
+            ),
+          ),
         );
       }
+      _logger.warning('Tag already exists or failed to add: ${newTag.name}');
       return;
     }
     _tagNameController.clear();
@@ -70,8 +88,13 @@ class _TagsScreenState extends State<TagsScreen> {
   }
 
   Future<void> _deleteTag(Tag tag) async {
-    await _storage.deleteTag(tag.id);
-    _loadTags();
+    try {
+      await _storage.deleteTag(tag.id);
+      _loadTags();
+      _logger.info('Deleted tag: ${tag.name}');
+    } catch (e) {
+      _logger.severe('Failed to delete tag: ${tag.name}', e);
+    }
   }
 
   void _showAddTagDialog() {

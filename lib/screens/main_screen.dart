@@ -6,6 +6,7 @@ import 'package:velotask/screens/todo_list_view.dart';
 import 'package:velotask/services/todo_storage.dart';
 import 'package:velotask/widgets/add_todo_dialog.dart';
 import 'package:velotask/l10n/app_localizations.dart';
+import 'package:velotask/utils/logger.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -20,37 +21,51 @@ class _MainScreenState extends State<MainScreen> {
   List<Tag> tags = [];
   bool _isLoading = true;
   final TodoStorage _storage = TodoStorage();
+  static final Logger _logger = AppLogger.getLogger('MainScreen');
 
   @override
   void initState() {
     super.initState();
+    _logger.info('MainScreen initialized');
     _loadData();
   }
 
   Future<void> _loadData() async {
-    await Future.wait([_loadTodos(), _loadTags()]);
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+    try {
+      await Future.wait([_loadTodos(), _loadTags()]);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      _logger.severe('Failed to load data', e);
     }
   }
 
   Future<void> _loadTags() async {
-    final loadedTags = await _storage.loadTags();
-    if (mounted) {
-      setState(() {
-        tags = loadedTags;
-      });
+    try {
+      final loadedTags = await _storage.loadTags();
+      if (mounted) {
+        setState(() {
+          tags = loadedTags;
+        });
+      }
+    } catch (e) {
+      _logger.severe('Failed to load tags', e);
     }
   }
 
   Future<void> _loadTodos() async {
-    final loadedTodos = await _storage.loadTodos();
-    if (mounted) {
-      setState(() {
-        todos = loadedTodos;
-      });
+    try {
+      final loadedTodos = await _storage.loadTodos();
+      if (mounted) {
+        setState(() {
+          todos = loadedTodos;
+        });
+      }
+    } catch (e) {
+      _logger.severe('Failed to load todos', e);
     }
   }
 
@@ -92,6 +107,9 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _toggleTodo(Todo todo) async {
     final updatedTodo = todo.copyWith(isCompleted: !todo.isCompleted);
+    // Preserve tags to prevent flickering and data loss
+    updatedTodo.tags.addAll(todo.tags);
+
     if (mounted) {
       setState(() {
         final index = todos.indexWhere((t) => t.id == todo.id);
@@ -100,7 +118,8 @@ class _MainScreenState extends State<MainScreen> {
         }
       });
     }
-    await _storage.updateTodo(updatedTodo);
+    // No need to save links when just toggling completion status
+    await _storage.updateTodo(updatedTodo, saveLinks: false);
   }
 
   Future<void> _editTodo(Todo todo) async {

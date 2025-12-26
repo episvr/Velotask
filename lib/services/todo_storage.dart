@@ -1,35 +1,69 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo.dart';
+import 'package:velotask/utils/logger.dart';
+
+class TagAlreadyExistsException implements Exception {
+  final String name;
+  TagAlreadyExistsException(this.name);
+  @override
+  String toString() => 'Tag "$name" already exists';
+}
 
 class TodoStorage {
   static Isar? _isar;
+  static Completer<void>? _initCompleter;
   final String? directoryPath;
+  static final Logger _logger = AppLogger.getLogger('TodoStorage');
 
   TodoStorage({this.directoryPath});
 
   Future<void> _init() async {
-    if (_isar != null && _isar!.isOpen) return;
-    Directory dir;
-    if (directoryPath != null) {
-      dir = Directory(directoryPath!);
-      if (!dir.existsSync()) dir.createSync(recursive: true);
-    } else {
-      dir = await getApplicationDocumentsDirectory();
+    if (_isar != null && _isar!.isOpen) {
+      return;
     }
-    _isar = await Isar.open([TodoSchema, TagSchema], directory: dir.path);
+
+    if (_initCompleter != null) {
+      return _initCompleter!.future;
+    }
+
+    _initCompleter = Completer<void>();
+
+    try {
+      Directory dir;
+      if (directoryPath != null) {
+        dir = Directory(directoryPath!);
+        if (!dir.existsSync()) dir.createSync(recursive: true);
+        _logger.info('Using custom directory: ${dir.path}');
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+        _logger.info('Using default directory: ${dir.path}');
+      }
+      _isar = await Isar.open([TodoSchema, TagSchema], directory: dir.path);
+      _logger.info('Isar database initialized');
+      _initCompleter!.complete();
+    } catch (e, stack) {
+      _initCompleter!.completeError(e, stack);
+      _initCompleter = null;
+      rethrow;
+    }
   }
 
   Future<List<Todo>> loadTodos() async {
     await _init();
-    return await _isar!.todos.where().findAll();
+    final todos = await _isar!.todos.where().findAll();
+    _logger.info('Loaded ${todos.length} todos');
+    return todos;
   }
 
   Future<List<Tag>> loadTags() async {
     await _init();
-    return await _isar!.tags.where().findAll();
+    final tags = await _isar!.tags.where().findAll();
+    _logger.info('Loaded ${tags.length} tags');
+    return tags;
   }
 
   Future<void> addTag(Tag tag) async {
@@ -46,6 +80,10 @@ class TodoStorage {
         await _isar!.writeTxn(() async {
           await _isar!.tags.put(existing);
         });
+        _logger.info('Updated existing tag: ${tag.name}');
+      } else {
+        _logger.info('Tag already exists: ${tag.name}');
+        throw TagAlreadyExistsException(tag.name);
       }
       return;
     }
@@ -53,6 +91,7 @@ class TodoStorage {
     await _isar!.writeTxn(() async {
       await _isar!.tags.put(tag);
     });
+    _logger.info('Added new tag: ${tag.name}');
   }
 
   Future<void> deleteTag(Id id) async {
@@ -60,6 +99,7 @@ class TodoStorage {
     await _isar!.writeTxn(() async {
       await _isar!.tags.delete(id);
     });
+    _logger.info('Deleted tag with id: $id');
   }
 
   Future<void> addTodo(Todo todo) async {
@@ -68,14 +108,18 @@ class TodoStorage {
       await _isar!.todos.put(todo);
       await todo.tags.save();
     });
+    _logger.info('Added new todo: ${todo.title}');
   }
 
-  Future<void> updateTodo(Todo todo) async {
+  Future<void> updateTodo(Todo todo, {bool saveLinks = true}) async {
     await _init();
     await _isar!.writeTxn(() async {
       await _isar!.todos.put(todo);
-      await todo.tags.save();
+      if (saveLinks) {
+        await todo.tags.save();
+      }
     });
+    _logger.info('Updated todo: ${todo.title} (saveLinks: $saveLinks)');
   }
 
   Future<void> deleteTodo(Id id) async {
@@ -83,6 +127,7 @@ class TodoStorage {
     await _isar!.writeTxn(() async {
       await _isar!.todos.delete(id);
     });
+    _logger.info('Deleted todo with id: $id');
   }
 
   /// Close the shared Isar instance. Useful for tests to cleanup.
