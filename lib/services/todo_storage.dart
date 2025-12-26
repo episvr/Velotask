@@ -14,12 +14,20 @@ class TagAlreadyExistsException implements Exception {
 }
 
 class TodoStorage {
+  static TodoStorage? _instance;
+  final String? directoryPath;
+
+  factory TodoStorage({String? directoryPath}) {
+    _instance ??= TodoStorage._internal(directoryPath: directoryPath);
+    return _instance!;
+  }
+
+  TodoStorage._internal({this.directoryPath});
+
   static Isar? _isar;
   static Completer<void>? _initCompleter;
-  final String? directoryPath;
+  static List<Tag>? _tagCache;
   static final Logger _logger = AppLogger.getLogger('TodoStorage');
-
-  TodoStorage({this.directoryPath});
 
   Future<void> _init() async {
     if (_isar != null && _isar!.isOpen) {
@@ -55,14 +63,23 @@ class TodoStorage {
   Future<List<Todo>> loadTodos() async {
     await _init();
     final todos = await _isar!.todos.where().findAll();
-    _logger.info('Loaded ${todos.length} todos');
+    // Pre-load tags for all todos to avoid lazy-loading during UI build
+    for (final todo in todos) {
+      await todo.tags.load();
+    }
+    _logger.info('Loaded ${todos.length} todos with tags pre-loaded');
     return todos;
   }
 
   Future<List<Tag>> loadTags() async {
+    if (_tagCache != null) {
+      _logger.fine('Returning cached tags (${_tagCache!.length})');
+      return _tagCache!;
+    }
     await _init();
     final tags = await _isar!.tags.where().findAll();
-    _logger.info('Loaded ${tags.length} tags');
+    _tagCache = tags;
+    _logger.info('Loaded ${tags.length} tags from DB');
     return tags;
   }
 
@@ -80,6 +97,7 @@ class TodoStorage {
         await _isar!.writeTxn(() async {
           await _isar!.tags.put(existing);
         });
+        _tagCache = null; // Invalidate cache
         _logger.info('Updated existing tag: ${tag.name}');
       } else {
         _logger.info('Tag already exists: ${tag.name}');
@@ -91,6 +109,7 @@ class TodoStorage {
     await _isar!.writeTxn(() async {
       await _isar!.tags.put(tag);
     });
+    _tagCache = null; // Invalidate cache
     _logger.info('Added new tag: ${tag.name}');
   }
 
@@ -99,6 +118,7 @@ class TodoStorage {
     await _isar!.writeTxn(() async {
       await _isar!.tags.delete(id);
     });
+    _tagCache = null; // Invalidate cache
     _logger.info('Deleted tag with id: $id');
   }
 
