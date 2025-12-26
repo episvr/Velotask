@@ -10,6 +10,7 @@
   "organization": "Organization",
   "manageTags": "Manage Tags",
   "manageTagsSubtitle": "Create, edit, or delete tags",
+  "noTags": "No tags yet",
   "about": "About",
   "version": "Version",
   "sourceCode": "Source Code",

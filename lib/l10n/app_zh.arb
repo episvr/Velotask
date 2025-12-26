@@ -10,6 +10,7 @@
   "organization": "组织",
   "manageTags": "管理标签",
   "manageTagsSubtitle": "创建、编辑或删除标签",
+  "noTags": "暂无标签",
   "about": "关于",
   "version": "版本",
   "sourceCode": "源代码",

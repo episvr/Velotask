@@ -54,9 +54,11 @@ class _TagsScreenState extends State<TagsScreen> {
       await _storage.addTag(newTag);
     } catch (e) {
       // If insertion failed (e.g., unique constraint), show a friendly message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Tag "${newTag.name}" already exists')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Tag "${newTag.name}" already exists')),
+        );
+      }
       return;
     }
     _tagNameController.clear();
