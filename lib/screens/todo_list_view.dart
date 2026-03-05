@@ -117,9 +117,7 @@ class _TodoListViewState extends State<TodoListView>
           .toList();
     }
 
-    result.sort((a, b) => PriorityEngine.compare(a, b));
-
-    return result;
+    return PriorityEngine.sortedTodos(result);
   }
 
   @override

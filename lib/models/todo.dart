@@ -14,6 +14,7 @@ class Todo {
   DateTime? startDate;
   DateTime? ddl;
   int importance; // 0: Low, 1: Normal, 2: High
+  double? estimatedEffortHours;
 
   final tags = IsarLinks<Tag>();
 
@@ -26,6 +27,7 @@ class Todo {
     this.startDate,
     this.ddl,
     this.importance = 1,
+    this.estimatedEffortHours,
   });
 
   // 复制方法
@@ -38,6 +40,7 @@ class Todo {
     DateTime? startDate,
     DateTime? ddl,
     int? importance,
+    double? estimatedEffortHours,
   }) {
     return Todo(
       id: id ?? this.id,
@@ -48,6 +51,7 @@ class Todo {
       startDate: startDate ?? this.startDate,
       ddl: ddl ?? this.ddl,
       importance: importance ?? this.importance,
+      estimatedEffortHours: estimatedEffortHours ?? this.estimatedEffortHours,
     );
   }
 }

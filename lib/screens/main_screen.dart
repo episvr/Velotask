@@ -6,6 +6,7 @@ import 'package:velotask/screens/dashboard_screen.dart';
 import 'package:velotask/screens/timeline_screen.dart';
 import 'package:velotask/screens/todo_list_view.dart';
 import 'package:velotask/services/ai_service.dart';
+import 'package:velotask/services/notification_service.dart';
 import 'package:velotask/services/todo_storage.dart';
 import 'package:velotask/utils/logger.dart';
 import 'package:velotask/widgets/add_todo_dialog.dart';
@@ -24,6 +25,8 @@ class _MainScreenState extends State<MainScreen> {
   List<Tag> tags = [];
   bool _isLoading = true;
   final TodoStorage _storage = TodoStorage();
+  final AIService _aiService = AIService();
+  final NotificationService _notificationService = NotificationService();
   static final Logger _logger = AppLogger.getLogger('MainScreen');
 
   @override
@@ -31,6 +34,9 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _logger.info('MainScreen initialized');
     _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncNotifications();
+    });
   }
 
   Future<void> _loadData() async {
@@ -40,10 +46,22 @@ class _MainScreenState extends State<MainScreen> {
         setState(() {
           _isLoading = false;
         });
+        await _syncNotifications();
       }
     } catch (e) {
       _logger.severe('Failed to load data', e);
     }
+  }
+
+  Future<void> _syncNotifications() async {
+    if (!mounted) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) {
+      return;
+    }
+    await _notificationService.syncForTodos(todos, l10n);
   }
 
   Future<void> _loadTags() async {
@@ -82,12 +100,21 @@ class _MainScreenState extends State<MainScreen> {
   ) async {
     if (title.isEmpty) return;
 
+    final estimatedEffortHours = await _aiService.estimateEffortHours(
+      title: title,
+      description: desc,
+      importance: importance,
+      startDate: startDate,
+      ddl: ddl,
+    );
+
     final newTodo = Todo(
       title: title,
       description: desc,
       startDate: startDate,
       ddl: ddl,
       importance: importance,
+      estimatedEffortHours: estimatedEffortHours,
     );
     newTodo.tags.addAll(tags);
 
@@ -96,6 +123,7 @@ class _MainScreenState extends State<MainScreen> {
       setState(() {
         todos.add(newTodo);
       });
+      await _syncNotifications();
     }
   }
 
@@ -105,6 +133,7 @@ class _MainScreenState extends State<MainScreen> {
       setState(() {
         todos.removeWhere((t) => t.id == todo.id);
       });
+      await _syncNotifications();
     }
   }
 
@@ -123,6 +152,7 @@ class _MainScreenState extends State<MainScreen> {
     }
     // No need to save links when just toggling completion status
     await _storage.updateTodo(updatedTodo, saveLinks: false);
+    await _syncNotifications();
   }
 
   Future<void> _editTodo(Todo todo) async {
@@ -131,12 +161,22 @@ class _MainScreenState extends State<MainScreen> {
       builder: (context) => AddTodoDialog(
         todo: todo,
         onAdd: (title, desc, startDate, ddl, importance, tags) async {
+          final estimatedEffortHours = await _aiService.estimateEffortHours(
+            title: title,
+            description: desc,
+            importance: importance,
+            startDate: startDate,
+            ddl: ddl,
+          );
+
           final updatedTodo = todo.copyWith(
             title: title,
             description: desc,
             startDate: startDate,
             ddl: ddl,
             importance: importance,
+            estimatedEffortHours:
+                estimatedEffortHours ?? todo.estimatedEffortHours,
           );
           updatedTodo.tags.clear();
           updatedTodo.tags.addAll(tags);
@@ -150,6 +190,7 @@ class _MainScreenState extends State<MainScreen> {
             });
           }
           await _storage.updateTodo(updatedTodo);
+          await _syncNotifications();
         },
       ),
     );

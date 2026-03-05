@@ -45,23 +45,95 @@ class AIService {
   AIService({http.Client? httpClient})
     : _httpClient = httpClient ?? http.Client();
 
+  Future<double?> estimateEffortHours({
+    required String title,
+    required String description,
+    required int importance,
+    DateTime? startDate,
+    DateTime? ddl,
+  }) async {
+    final config = await _loadConfig();
+    if (config == null) {
+      _logger.fine('Skip effort estimation because AI config is missing');
+      return null;
+    }
+
+    final now = DateTime.now();
+    final prompt =
+        '''
+You are a task effort estimation engine.
+
+Estimate effort hours (E) for the task. Output ONLY JSON:
+{"estimatedHours": number}
+
+Rules:
+1) Return a single positive number in hours.
+2) Consider title, description, priority, start/deadline if available.
+3) Keep estimate practical for personal task management.
+4) Use range [0.25, 100].
+5) No markdown, no extra text.
+
+Context:
+- Current time: ${now.toIso8601String()}
+- Title: "$title"
+- Description: "$description"
+- Importance: $importance (0 low, 1 normal, 2 high)
+- Start: ${startDate?.toIso8601String() ?? 'null'}
+- Deadline: ${ddl?.toIso8601String() ?? 'null'}
+''';
+
+    try {
+      final response = await _httpClient
+          .post(
+            Uri.parse('${config.baseUrl}/chat/completions'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${config.apiKey}',
+            },
+            body: jsonEncode({
+              'model': config.model,
+              'messages': [
+                {'role': 'user', 'content': prompt},
+              ],
+              'temperature': 0.2,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode != 200) {
+        _logger.warning(
+          'Effort estimation API error: ${response.statusCode} - ${response.body}',
+        );
+        return null;
+      }
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      final content = data['choices'][0]['message']['content'].trim();
+      final cleanContent = _stripMarkdownCodeBlock(content);
+      final Map<String, dynamic> effortJson = jsonDecode(cleanContent);
+
+      final raw = effortJson['estimatedHours'];
+      final value = raw is num ? raw.toDouble() : double.tryParse('$raw');
+      if (value == null || value <= 0) {
+        return null;
+      }
+      return value.clamp(0.25, 100.0);
+    } catch (e, stack) {
+      _logger.warning('Effort estimation failed: $e');
+      _logger.fine('Effort estimation stack: $stack');
+      return null;
+    }
+  }
+
   Future<AIParseResult?> parseTask(
     String input, {
     List<String> existingTags = const [],
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final baseUrl = prefs.getString('ai_base_url') ?? '';
-    final apiKey = prefs.getString('ai_api_key') ?? '';
-    final model = prefs.getString('ai_model') ?? 'gpt-3.5-turbo';
-
-    if (baseUrl.isEmpty || apiKey.isEmpty) {
+    final config = await _loadConfig();
+    if (config == null) {
       _logger.warning('AI API configuration is missing');
       throw Exception('AI configuration missing');
     }
-
-    final normalizedBaseUrl = baseUrl.endsWith('/')
-        ? baseUrl.substring(0, baseUrl.length - 1)
-        : baseUrl;
 
     final now = DateTime.now();
     final tagsContext = existingTags.isEmpty ? 'None' : existingTags.join(', ');
@@ -123,13 +195,13 @@ User input: "$input"
 
       final response = await _httpClient
           .post(
-            Uri.parse('$normalizedBaseUrl/chat/completions'),
+            Uri.parse('${config.baseUrl}/chat/completions'),
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer $apiKey',
+              'Authorization': 'Bearer ${config.apiKey}',
             },
             body: jsonEncode({
-              'model': model,
+              'model': config.model,
               'messages': [
                 {'role': 'user', 'content': prompt},
               ],
@@ -142,13 +214,7 @@ User input: "$input"
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         final content = data['choices'][0]['message']['content'].trim();
 
-        // Remove markdown code blocks if present
-        String cleanContent = content;
-        if (content.startsWith('```json')) {
-          cleanContent = content.substring(7, content.length - 3);
-        } else if (content.startsWith('```')) {
-          cleanContent = content.substring(3, content.length - 3);
-        }
+        final cleanContent = _stripMarkdownCodeBlock(content);
 
         final Map<String, dynamic> taskJson = jsonDecode(cleanContent);
         _logger.info('AI parse success: ${taskJson['title']}');
@@ -164,4 +230,43 @@ User input: "$input"
       rethrow;
     }
   }
+
+  Future<_AIConfig?> _loadConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final baseUrl = prefs.getString('ai_base_url') ?? '';
+    final apiKey = prefs.getString('ai_api_key') ?? '';
+    final model = prefs.getString('ai_model') ?? 'gpt-3.5-turbo';
+
+    if (baseUrl.isEmpty || apiKey.isEmpty) {
+      return null;
+    }
+
+    final normalizedBaseUrl = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+
+    return _AIConfig(baseUrl: normalizedBaseUrl, apiKey: apiKey, model: model);
+  }
+
+  String _stripMarkdownCodeBlock(String content) {
+    if (content.startsWith('```json') && content.endsWith('```')) {
+      return content.substring(7, content.length - 3).trim();
+    }
+    if (content.startsWith('```') && content.endsWith('```')) {
+      return content.substring(3, content.length - 3).trim();
+    }
+    return content;
+  }
+}
+
+class _AIConfig {
+  final String baseUrl;
+  final String apiKey;
+  final String model;
+
+  const _AIConfig({
+    required this.baseUrl,
+    required this.apiKey,
+    required this.model,
+  });
 }

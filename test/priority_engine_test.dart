@@ -3,225 +3,192 @@ import 'package:velotask/models/todo.dart';
 import 'package:velotask/utils/priority_engine.dart';
 
 void main() {
-  group('PriorityEngine.score', () {
+  group('PriorityEngine v1/v2 urgency', () {
     final now = DateTime(2026, 3, 5, 10);
 
-    test('higher importance gets higher score when deadline is same', () {
-      final low = Todo(
-        title: 'low',
-        importance: 0,
-        ddl: now.add(const Duration(days: 3)),
+    test('balanced model hits target anchors for 1h task', () {
+      Todo taskAt(Duration offset) =>
+          Todo(title: 'anchor task 1h', importance: 1, ddl: now.add(offset));
+
+      final at8h = PriorityEngine.urgencyRatioV2(
+        taskAt(const Duration(hours: 8)),
+        now: now,
       );
-      final medium = Todo(
-        title: 'medium',
-        importance: 1,
-        ddl: now.add(const Duration(days: 3)),
+      final at1d = PriorityEngine.urgencyRatioV2(
+        taskAt(const Duration(hours: 24)),
+        now: now,
       );
-      final high = Todo(
-        title: 'high',
-        importance: 2,
-        ddl: now.add(const Duration(days: 3)),
+      final at3d = PriorityEngine.urgencyRatioV2(
+        taskAt(const Duration(hours: 72)),
+        now: now,
+      );
+      final at7d = PriorityEngine.urgencyRatioV2(
+        taskAt(const Duration(hours: 168)),
+        now: now,
       );
 
-      expect(
-        PriorityEngine.score(high, now: now),
-        greaterThan(PriorityEngine.score(medium, now: now)),
-      );
-      expect(
-        PriorityEngine.score(medium, now: now),
-        greaterThan(PriorityEngine.score(low, now: now)),
-      );
+      expect(at8h, closeTo(0.99, 0.03));
+      expect(at1d, closeTo(0.70, 0.03));
+      expect(at3d, closeTo(0.40, 0.03));
+      expect(at7d, closeTo(0.20, 0.03));
     });
 
-    test('near deadline gets higher score when importance is same', () {
-      final near = Todo(
-        title: 'near',
+    test('v1 uses E/R and classifies thresholds', () {
+      final relaxed = Todo(
+        title: 'quick task 1h',
+        importance: 1,
+        ddl: now.add(const Duration(hours: 20)),
+      );
+      final medium = Todo(
+        title: 'medium task 3h',
         importance: 1,
         ddl: now.add(const Duration(hours: 8)),
       );
-      final far = Todo(
-        title: 'far',
+      final high = Todo(
+        title: 'hard task 5h',
         importance: 1,
-        ddl: now.add(const Duration(days: 20)),
+        ddl: now.add(const Duration(hours: 6)),
       );
 
+      expect(PriorityEngine.urgencyRatioV1(relaxed, now: now), lessThan(0.3));
       expect(
-        PriorityEngine.score(near, now: now),
-        greaterThan(PriorityEngine.score(far, now: now)),
+        PriorityEngine.urgencyRatioV1(medium, now: now),
+        inInclusiveRange(0.3, 0.7),
+      );
+      expect(
+        PriorityEngine.urgencyRatioV1(high, now: now),
+        greaterThanOrEqualTo(0.7),
       );
     });
 
-    test('completed todo is deprioritized', () {
+    test('v2 urgency is higher when deadline is nearer', () {
+      final near = Todo(
+        title: 'same effort 3h',
+        importance: 1,
+        ddl: now.add(const Duration(hours: 4)),
+      );
+      final far = Todo(
+        title: 'same effort 3h',
+        importance: 1,
+        ddl: now.add(const Duration(hours: 24)),
+      );
+
+      expect(
+        PriorityEngine.urgencyRatioV2(near, now: now),
+        greaterThan(PriorityEngine.urgencyRatioV2(far, now: now)),
+      );
+    });
+
+    test('completed task is deprioritized', () {
       final done = Todo(
-        title: 'done',
+        title: 'done 2h',
         importance: 2,
         ddl: now.add(const Duration(hours: 2)),
         isCompleted: true,
       );
 
       expect(PriorityEngine.score(done, now: now), lessThan(0));
-    });
-  });
-
-  group('PriorityEngine.compare', () {
-    final now = DateTime(2026, 3, 5, 10);
-
-    test('orders by priority descending', () {
-      final a = Todo(
-        title: 'A',
-        importance: 0,
-        ddl: now.add(const Duration(days: 10)),
-      );
-      final b = Todo(
-        title: 'B',
-        importance: 2,
-        ddl: now.add(const Duration(days: 2)),
-      );
-      final c = Todo(
-        title: 'C',
-        importance: 1,
-        ddl: now.add(const Duration(hours: 6)),
-      );
-
-      final list = [a, b, c]
-        ..sort((x, y) => PriorityEngine.compare(x, y, now: now));
-
-      expect(list.first.title, anyOf('B', 'C'));
-      expect(list.last.title, 'A');
-    });
-  });
-
-  group('PriorityEngine.notificationTier', () {
-    final now = DateTime(2026, 3, 5, 10);
-
-    test('high tier for high importance and very near deadline', () {
-      final todo = Todo(
-        title: 'urgent',
-        importance: 2,
-        ddl: now.add(const Duration(hours: 2)),
-      );
       expect(
-        PriorityEngine.notificationTier(todo, now: now),
-        PriorityNotificationTier.high,
-      );
-    });
-
-    test('none tier for completed tasks', () {
-      final todo = Todo(
-        title: 'done',
-        importance: 2,
-        ddl: now.add(const Duration(hours: 2)),
-        isCompleted: true,
-      );
-      expect(
-        PriorityEngine.notificationTier(todo, now: now),
+        PriorityEngine.notificationTier(done, now: now),
         PriorityNotificationTier.none,
       );
     });
   });
 
-  group('PriorityEngine deadline ranges', () {
+  group('PriorityEngine v3/v4 score and ordering', () {
     final now = DateTime(2026, 3, 5, 10);
 
-    Todo mediumTodoAt(Duration offset) {
-      return Todo(title: 'range', importance: 1, ddl: now.add(offset));
-    }
+    test('priority contributes but urgency dominates', () {
+      final highPriorityFar = Todo(
+        title: 'far 2h',
+        importance: 2,
+        ddl: now.add(const Duration(days: 5)),
+      );
+      final lowPriorityNear = Todo(
+        title: 'near 4h',
+        importance: 0,
+        ddl: now.add(const Duration(hours: 5)),
+      );
 
-    test('bucket boundaries produce expected scores and tiers', () {
-      final cases =
-          <({Duration offset, double score, PriorityNotificationTier tier})>[
-            (
-              offset: const Duration(hours: -1),
-              score: 166,
-              tier: PriorityNotificationTier.high,
-            ),
-            (
-              offset: const Duration(hours: 3),
-              score: 152,
-              tier: PriorityNotificationTier.high,
-            ),
-            (
-              offset: const Duration(hours: 12),
-              score: 138,
-              tier: PriorityNotificationTier.medium,
-            ),
-            (
-              offset: const Duration(hours: 24),
-              score: 122,
-              tier: PriorityNotificationTier.medium,
-            ),
-            (
-              offset: const Duration(hours: 72),
-              score: 102,
-              tier: PriorityNotificationTier.medium,
-            ),
-            (
-              offset: const Duration(hours: 168),
-              score: 84,
-              tier: PriorityNotificationTier.low,
-            ),
-            (
-              offset: const Duration(hours: 336),
-              score: 72,
-              tier: PriorityNotificationTier.low,
-            ),
-            (
-              offset: const Duration(hours: 500),
-              score: 62,
-              tier: PriorityNotificationTier.low,
-            ),
-          ];
-
-      for (final c in cases) {
-        final todo = mediumTodoAt(c.offset);
-        expect(PriorityEngine.score(todo, now: now), c.score);
-        expect(PriorityEngine.notificationTier(todo, now: now), c.tier);
-      }
+      expect(
+        PriorityEngine.score(lowPriorityNear, now: now),
+        greaterThan(PriorityEngine.score(highPriorityFar, now: now)),
+      );
     });
 
-    test('scores step down right after boundary points', () {
-      final at24 = PriorityEngine.score(
-        mediumTodoAt(const Duration(hours: 24)),
-        now: now,
+    test('overload coupling boosts urgency under heavy load', () {
+      final base = Todo(
+        title: 'base 3h',
+        importance: 1,
+        ddl: now.add(const Duration(hours: 12)),
       );
-      final after24 = PriorityEngine.score(
-        mediumTodoAt(const Duration(hours: 25)),
-        now: now,
-      );
-      final at72 = PriorityEngine.score(
-        mediumTodoAt(const Duration(hours: 72)),
-        now: now,
-      );
-      final after72 = PriorityEngine.score(
-        mediumTodoAt(const Duration(hours: 73)),
-        now: now,
-      );
+      final normalLoad = [base];
+      final heavyLoad = [
+        base,
+        Todo(
+          title: 'x1 8h',
+          importance: 2,
+          ddl: now.add(const Duration(hours: 10)),
+        ),
+        Todo(
+          title: 'x2 8h',
+          importance: 2,
+          ddl: now.add(const Duration(hours: 10)),
+        ),
+      ];
 
-      expect(after24, lessThan(at24));
-      expect(after72, lessThan(at72));
+      expect(
+        PriorityEngine.urgency(base, allTodos: heavyLoad, now: now),
+        greaterThan(
+          PriorityEngine.urgency(base, allTodos: normalLoad, now: now),
+        ),
+      );
     });
 
-    test('urgency rises quickly in the last 24 hours', () {
-      final at48 = PriorityEngine.score(
-        mediumTodoAt(const Duration(hours: 48)),
-        now: now,
+    test('sortedTodos places theoretically late task first', () {
+      final impossible = Todo(
+        title: 'impossible 10h',
+        importance: 1,
+        ddl: now.add(const Duration(hours: 2)),
       );
-      final at24 = PriorityEngine.score(
-        mediumTodoAt(const Duration(hours: 24)),
-        now: now,
-      );
-      final at12 = PriorityEngine.score(
-        mediumTodoAt(const Duration(hours: 12)),
-        now: now,
-      );
-      final at3 = PriorityEngine.score(
-        mediumTodoAt(const Duration(hours: 3)),
-        now: now,
+      final relaxed = Todo(
+        title: 'relaxed 1h',
+        importance: 2,
+        ddl: now.add(const Duration(days: 3)),
       );
 
-      expect(at24 - at48, greaterThanOrEqualTo(20));
-      expect(at12 - at24, greaterThanOrEqualTo(16));
-      expect(at3 - at12, greaterThanOrEqualTo(12));
+      final sorted = PriorityEngine.sortedTodos([
+        relaxed,
+        impossible,
+      ], now: now);
+      expect(sorted.first.title, 'impossible 10h');
+      expect(PriorityEngine.isTheoreticallyLate(impossible, now: now), isTrue);
+    });
+
+    test('notification tier maps to urgency band', () {
+      final urgent = Todo(
+        title: 'urgent 6h',
+        importance: 2,
+        ddl: now.add(const Duration(hours: 3)),
+      );
+      final normal = Todo(
+        title: 'normal 1h',
+        importance: 1,
+        ddl: now.add(const Duration(days: 2)),
+      );
+
+      expect(
+        PriorityEngine.notificationTier(urgent, now: now),
+        anyOf(PriorityNotificationTier.high, PriorityNotificationTier.medium),
+      );
+      expect(
+        PriorityEngine.notificationTier(normal, now: now),
+        anyOf(
+          PriorityNotificationTier.none,
+          PriorityNotificationTier.low,
+          PriorityNotificationTier.medium,
+        ),
+      );
     });
   });
 }

@@ -3,6 +3,7 @@ import 'package:velotask/l10n/app_localizations.dart';
 import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo.dart';
 import 'package:velotask/theme/app_theme.dart';
+import 'package:velotask/utils/priority_engine.dart';
 
 class TodoItem extends StatefulWidget {
   final Todo todo;
@@ -34,6 +35,16 @@ class _TodoItemState extends State<TodoItem> {
       default:
         return AppTheme.mediumPriority;
     }
+  }
+
+  Color _urgencyColor(BuildContext context, UrgencyBand band) {
+    final cs = Theme.of(context).colorScheme;
+    return switch (band) {
+      UrgencyBand.relaxed => cs.secondary,
+      UrgencyBand.medium => AppTheme.mediumPriority,
+      UrgencyBand.high => AppTheme.highPriority,
+      UrgencyBand.impossible => cs.error,
+    };
   }
 
   String _formatDate(BuildContext context, DateTime date) {
@@ -68,6 +79,12 @@ class _TodoItemState extends State<TodoItem> {
         : widget.todo.importance == 0
         ? l10n.priorityLow
         : l10n.priorityMed;
+    final urgencyValue = PriorityEngine.urgency(widget.todo);
+    final urgencyBand = PriorityEngine.urgencyBand(widget.todo);
+    final urgencyColor = _urgencyColor(context, urgencyBand);
+    final urgencyText = urgencyValue >= 9.99
+        ? '9.99+'
+        : urgencyValue.toStringAsFixed(2);
 
     return Dismissible(
       key: Key(widget.todo.id.toString()),
@@ -310,6 +327,24 @@ class _TodoItemState extends State<TodoItem> {
                               style: AppTheme.tinyBoldStyle(
                                 context,
                                 color: _getImportanceColor(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: urgencyColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'U: $urgencyText',
+                              style: AppTheme.tinyBoldStyle(
+                                context,
+                                color: urgencyColor,
                               ),
                             ),
                           ),
