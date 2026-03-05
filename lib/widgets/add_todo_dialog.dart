@@ -3,6 +3,7 @@ import 'package:velotask/l10n/app_localizations.dart';
 import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo.dart';
 import 'package:velotask/services/todo_storage.dart';
+import 'package:velotask/theme/app_theme.dart';
 import 'package:velotask/widgets/dialog_components.dart';
 
 class AddTodoDialog extends StatefulWidget {
@@ -78,7 +79,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: Text(
         widget.todo == null ? l10n.newTask : l10n.editTask,
-        style: const TextStyle(fontWeight: FontWeight.bold),
+        style: AppTheme.dialogTitleStyle(context),
       ),
       content: ConstrainedBox(
         constraints: BoxConstraints(
@@ -96,15 +97,11 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                 child: TextField(
                   controller: _titleController,
                   autofocus: true,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTheme.bodyStrongStyle(context),
                   decoration: InputDecoration(
                     hintText: l10n.titleHint,
                     hintStyle: TextStyle(
                       color: Colors.grey.withValues(alpha: 0.5),
-                      fontWeight: FontWeight.normal,
                     ),
                     filled: false,
                     border: InputBorder.none,
@@ -122,7 +119,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                 isInput: true,
                 child: TextField(
                   controller: _descController,
-                  style: const TextStyle(fontSize: 16),
+                  style: AppTheme.bodyStrongStyle(context),
                   decoration: InputDecoration(
                     hintText: l10n.descHint,
                     hintStyle: TextStyle(
@@ -170,6 +167,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                             firstDate: _startDate,
                             onSelect: (d) => setState(() => _ddl = d),
                             isOptional: true,
+                            includeTime: true,
                           ),
                         ],
                       )
@@ -202,6 +200,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
                               firstDate: _startDate,
                               onSelect: (d) => setState(() => _ddl = d),
                               isOptional: true,
+                              includeTime: true,
                             ),
                           ),
                         ],
@@ -308,7 +307,10 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
           ),
           child: Text(
             widget.todo == null ? l10n.create : l10n.save,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: AppTheme.bodyStrongStyle(
+              context,
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
           ),
         ),
       ],

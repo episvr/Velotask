@@ -4,7 +4,7 @@ import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo.dart';
 import 'package:velotask/theme/app_theme.dart';
 
-class TodoItem extends StatelessWidget {
+class TodoItem extends StatefulWidget {
   final Todo todo;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
@@ -20,8 +20,13 @@ class TodoItem extends StatelessWidget {
     this.visibleTags,
   });
 
+  @override
+  State<TodoItem> createState() => _TodoItemState();
+}
+
+class _TodoItemState extends State<TodoItem> {
   Color _getImportanceColor() {
-    switch (todo.importance) {
+    switch (widget.todo.importance) {
       case 2:
         return AppTheme.highPriority;
       case 0:
@@ -37,44 +42,76 @@ class TodoItem extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
     final target = DateTime(date.year, date.month, date.day);
+    final timeStr =
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
     if (target == today) {
-      return l10n.today;
+      return '${l10n.today} $timeStr';
     } else if (target == tomorrow) {
-      return l10n.tomorrow;
+      return '${l10n.tomorrow} $timeStr';
     } else {
-      return '${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+      return '${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} $timeStr';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDone = todo.isCompleted;
+    final isDone = widget.todo.isCompleted;
     final l10n = AppLocalizations.of(context)!;
-    final dateStr = todo.ddl != null ? _formatDate(context, todo.ddl!) : '-';
+    final dateStr = widget.todo.ddl != null
+        ? _formatDate(context, widget.todo.ddl!)
+        : '-';
     final isUrgent = dateStr == l10n.today || dateStr == l10n.tomorrow;
     final statusLabel = isDone ? l10n.filterDone : l10n.filterActive;
-    final priorityLabel = todo.importance == 2
+    final priorityLabel = widget.todo.importance == 2
         ? l10n.priorityHigh
-        : todo.importance == 0
+        : widget.todo.importance == 0
         ? l10n.priorityLow
         : l10n.priorityMed;
 
     return Dismissible(
-      key: Key(todo.id.toString()),
+      key: Key(widget.todo.id.toString()),
       background: Container(
+        color: Theme.of(context).primaryColor.withValues(alpha: 0.14),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 20),
+        child: Icon(
+          isDone ? Icons.undo_rounded : Icons.done_rounded,
+          color: Theme.of(context).primaryColor,
+        ),
+      ),
+      secondaryBackground: Container(
         color: Theme.of(context).colorScheme.error,
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
-      direction: DismissDirection.endToStart,
-      onDismissed: (_) => onDelete(),
+      direction: DismissDirection.horizontal,
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          widget.onToggle();
+          return false;
+        }
+        return true;
+      },
+      onDismissed: (direction) {
+        if (direction == DismissDirection.endToStart) {
+          widget.onDelete();
+        }
+      },
       child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
         opacity: isDone ? 0.6 : 1.0,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
+            color: isDone
+                ? Theme.of(
+                    context,
+                  ).colorScheme.secondary.withValues(alpha: 0.04)
+                : Colors.transparent,
             border: Border(
               bottom: BorderSide(
                 color: Theme.of(
@@ -87,91 +124,51 @@ class TodoItem extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Checkbox
-              GestureDetector(
-                onTap: onToggle,
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeInOut,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.rectangle,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: isDone
-                                ? Theme.of(context).colorScheme.secondary
-                                : Theme.of(context).primaryColor,
-                            width: 2,
-                          ),
-                          color: isDone
-                              ? Theme.of(context).colorScheme.secondary
-                              : Colors.transparent,
-                        ),
-                        child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 200),
-                          opacity: isDone ? 1.0 : 0.0,
-                          child: Icon(
-                            Icons.check,
-                            size: 14,
-                            color: Theme.of(context).colorScheme.onSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
               // Content
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if ((visibleTags ?? todo.tags).isNotEmpty)
+                      if ((widget.visibleTags ?? widget.todo.tags).isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: Row(
-                              children: (visibleTags ?? todo.tags).map((tag) {
-                                Color tagColor = Colors.blue;
-                                if (tag.color != null) {
-                                  try {
-                                    tagColor = Color(
-                                      int.parse(
-                                        tag.color!.replaceAll('#', '0xFF'),
+                              children: (widget.visibleTags ?? widget.todo.tags)
+                                  .map((tag) {
+                                    Color tagColor = Colors.blue;
+                                    if (tag.color != null) {
+                                      try {
+                                        tagColor = Color(
+                                          int.parse(
+                                            tag.color!.replaceAll('#', '0xFF'),
+                                          ),
+                                        );
+                                      } catch (_) {}
+                                    }
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      margin: const EdgeInsets.only(right: 6),
+                                      decoration: BoxDecoration(
+                                        color: tagColor.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        tag.name.toUpperCase(),
+                                        style: AppTheme.tinyBoldStyle(
+                                          context,
+                                          color: tagColor,
+                                        ),
                                       ),
                                     );
-                                  } catch (_) {}
-                                }
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  margin: const EdgeInsets.only(right: 6),
-                                  decoration: BoxDecoration(
-                                    color: tagColor.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    tag.name.toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: tagColor,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
+                                  })
+                                  .toList(),
                             ),
                           ),
                         ),
@@ -181,9 +178,7 @@ class TodoItem extends StatelessWidget {
                           Expanded(
                             child: AnimatedDefaultTextStyle(
                               duration: const Duration(milliseconds: 200),
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                              style: AppTheme.bodyMediumStyle(context).copyWith(
                                 decoration: isDone
                                     ? TextDecoration.lineThrough
                                     : TextDecoration.none,
@@ -195,47 +190,72 @@ class TodoItem extends StatelessWidget {
                                 ).colorScheme.secondary,
                               ),
                               child: Text(
-                                todo.title,
+                                widget.todo.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: isDone
-                                  ? Theme.of(context).colorScheme.secondary
-                                        .withValues(alpha: 0.14)
-                                  : Theme.of(
+                          if (isDone)
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              switchInCurve: Curves.easeOutCubic,
+                              switchOutCurve: Curves.easeInCubic,
+                              transitionBuilder: (child, animation) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: ScaleTransition(
+                                    scale: Tween<double>(
+                                      begin: 0.92,
+                                      end: 1.0,
+                                    ).animate(animation),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: Transform.rotate(
+                                key: ValueKey(
+                                  'stamp_${widget.todo.id}_$isDone',
+                                ),
+                                angle: -0.08,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 9,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                      width: 1.4,
+                                    ),
+                                    color: Theme.of(
                                       context,
-                                    ).primaryColor.withValues(alpha: 0.12),
-                            ),
-                            child: Text(
-                              statusLabel,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: isDone
-                                    ? Theme.of(context).colorScheme.secondary
-                                    : Theme.of(context).primaryColor,
+                                    ).colorScheme.error.withValues(alpha: 0.08),
+                                  ),
+                                  child: Text(
+                                    statusLabel.toUpperCase(),
+                                    style: AppTheme.stampStyle(
+                                      context,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
-                      if (todo.description.isNotEmpty)
+                      if (widget.todo.description.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
-                            todo.description,
-                            style: TextStyle(
-                              fontSize: 12,
+                            widget.todo.description,
+                            style: AppTheme.smallRegularStyle(context).copyWith(
                               color: Theme.of(
                                 context,
                               ).colorScheme.secondary.withValues(alpha: 0.8),
@@ -264,14 +284,12 @@ class TodoItem extends StatelessWidget {
                             ),
                             child: Text(
                               dateStr,
-                              style: TextStyle(
-                                fontSize: 12,
+                              style: AppTheme.dateChipStyle(
+                                context,
+                                urgent: isUrgent,
                                 color: isUrgent
                                     ? Theme.of(context).primaryColor
                                     : Theme.of(context).colorScheme.secondary,
-                                fontWeight: isUrgent
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
                               ),
                             ),
                           ),
@@ -289,10 +307,9 @@ class TodoItem extends StatelessWidget {
                             ),
                             child: Text(
                               priorityLabel,
-                              style: TextStyle(
-                                fontSize: 10,
+                              style: AppTheme.tinyBoldStyle(
+                                context,
                                 color: _getImportanceColor(),
-                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
@@ -308,7 +325,7 @@ class TodoItem extends StatelessWidget {
                                   context,
                                 ).colorScheme.secondary.withValues(alpha: 0.5),
                               ),
-                              onPressed: onEdit,
+                              onPressed: widget.onEdit,
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
                                 minWidth: 44,

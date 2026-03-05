@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:velotask/l10n/app_localizations.dart';
 import 'package:velotask/main.dart';
 import 'package:velotask/screens/tags_screen.dart';
+import 'package:velotask/theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -91,7 +92,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.settings)),
+      appBar: AppBar(
+        title: Text(
+          l10n.settings,
+          style: AppTheme.pageTitleStyle(
+            context,
+            color: Theme.of(context).primaryColor,
+          ),
+        ),
+      ),
       body: ListView(
         children: [
           _buildSectionHeader(context, l10n.general),
@@ -169,9 +178,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 mode: LaunchMode.externalApplication,
               );
               if (!launched && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Unable to open link')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(l10n.unableToOpenLink)));
               }
             },
           ),
@@ -185,10 +194,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Text(
         title,
-        style: TextStyle(
+        style: AppTheme.sectionTitleStyle(
+          context,
           color: Theme.of(context).primaryColor,
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
         ),
       ),
     );

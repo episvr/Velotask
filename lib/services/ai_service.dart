@@ -68,29 +68,52 @@ class AIService {
 
     final prompt =
         '''
-You are a task management assistant. Parse the user's natural language input into a structured JSON object.
+You are an expert task parsing engine. Convert the user's natural language into ONE valid JSON object for a todo app.
 
 [Context]
 Current Time: ${now.toIso8601String()}
 Today is: ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][now.weekday - 1]}
 Existing tags: $tagsContext
 
-[Output Schema]
+[Output Schema - MUST follow exactly]
 {
   "title": "Short task title",
-  "description": "Optional description",
-  "importance": 0 (Low), 1 (Normal), or 2 (High),
+  "description": "Optional concise description",
+  "importance": 0,
   "startDate": "ISO8601 string or null",
   "deadline": "ISO8601 string or null",
   "tags": ["tag1", "tag2"]
 }
 
-[Rules]
-1. Resolve relative dates (e.g., "next Wednesday", "tomorrow", "this weekend") based on the Current Time provided.
-2. If only one date/time is mentioned, it is usually the "deadline".
-3. Extract or suggest relevant tags. PREFER reusing existing tags listed above. Create new tags only when necessary and avoid being overly aggressive.
-4. Autonomously write a helpful and concise "description" based on the task context.
-5. Return ONLY the JSON object, no other text.
+[Hard Constraints]
+1) Output ONLY raw JSON. No markdown, no code fence, no explanation.
+2) "importance" must be integer: 0 (Low), 1 (Normal), 2 (High).
+3) "startDate" and "deadline" must be ISO8601 or null.
+4) "tags" must be an array of short strings, max 4 items.
+5) Prefer the user's language style for title/description.
+
+[Time Parsing Rules]
+1) Resolve relative time from Current Time (today/tomorrow/next week/this weekend/in 2 hours, etc.).
+2) If only one time point is mentioned, treat it as "deadline".
+3) If a date is mentioned without time for deadline, default to 23:59 local time.
+4) If time is mentioned without date, use the nearest future time.
+5) If both start and end are implied (e.g., "8:30-10:30"), map start to "startDate" and end to "deadline".
+6) If no reliable time is found, keep missing fields as null.
+
+[Importance Heuristic]
+- 2 (High): explicit urgency/critical words, exam/interview/deadline soon, overdue, strong consequence.
+- 1 (Normal): ordinary actionable tasks with moderate urgency.
+- 0 (Low): optional, someday, low-pressure, no urgency.
+
+[Tag Rules]
+1) Reuse Existing tags when semantically close (case-insensitive match).
+2) Create new tags only when needed.
+3) Use compact noun-like tags (e.g., "study", "work", "health").
+
+[Quality Rules]
+1) "title" should be short and actionable.
+2) "description" should be concise, useful, and non-redundant.
+3) Do not invent highly specific facts not implied by input.
 
 User input: "$input"
 ''';

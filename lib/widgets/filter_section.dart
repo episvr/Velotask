@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:velotask/l10n/app_localizations.dart';
 import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo_filter.dart';
+import 'package:velotask/theme/app_theme.dart';
 
 class FilterSection extends StatelessWidget {
   final TodoFilter currentFilter;
@@ -99,7 +100,7 @@ class FilterSection extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     AppLocalizations.of(context)!.noTags,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    style: AppTheme.bodyMediumStyle(context).copyWith(
                       color: Theme.of(
                         context,
                       ).colorScheme.outline.withValues(alpha: 0.8),
@@ -131,10 +132,10 @@ class FilterSection extends StatelessWidget {
       materialTapTargetSize: MaterialTapTargetSize.padded,
       backgroundColor: Colors.transparent,
       selectedColor: theme.primaryColor,
-      labelStyle: TextStyle(
+      labelStyle: AppTheme.chipLabelStyle(
+        context,
+        selected: isSelected,
         color: isSelected ? colorScheme.onPrimary : colorScheme.secondary,
-        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-        fontSize: 13,
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
@@ -168,10 +169,10 @@ class FilterSection extends StatelessWidget {
       backgroundColor: Colors.transparent,
       selectedColor: tagColor,
       checkmarkColor: Colors.white,
-      labelStyle: TextStyle(
+      labelStyle: AppTheme.chipLabelStyle(
+        context,
+        selected: isSelected,
         color: isSelected ? Colors.white : tagColor,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        fontSize: 13,
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),

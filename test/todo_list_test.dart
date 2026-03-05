@@ -126,6 +126,43 @@ void main() {
 
       expect(find.text('WORK'), findsOneWidget); // Tags are uppercased in UI
     });
+
+    testWidgets('swipe right toggles and swipe left deletes', (
+      WidgetTester tester,
+    ) async {
+      final todo = Todo(title: 'Swipe Todo');
+      var toggled = false;
+      var deleted = false;
+
+      await tester.pumpWidget(
+        createLocalizedWidgetForTesting(
+          child: TodoItem(
+            todo: todo,
+            onToggle: () {
+              toggled = true;
+            },
+            onDelete: () {
+              deleted = true;
+            },
+            onEdit: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.byType(TodoItem), const Offset(400, 0));
+      await tester.pumpAndSettle();
+
+      expect(toggled, isTrue);
+      expect(deleted, isFalse);
+
+      toggled = false;
+      await tester.drag(find.byType(TodoItem), const Offset(-400, 0));
+      await tester.pumpAndSettle();
+
+      expect(toggled, isFalse);
+      expect(deleted, isTrue);
+    });
   });
 
   group('FilterSection Tests', () {

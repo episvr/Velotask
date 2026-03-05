@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:velotask/l10n/app_localizations.dart';
 import 'package:velotask/screens/settings_screen.dart';
 import 'package:velotask/services/ai_service.dart';
+import 'package:velotask/theme/app_theme.dart';
 import 'package:velotask/utils/logger.dart';
 
 class AIInputDialog extends StatefulWidget {
@@ -91,7 +92,7 @@ class _AIInputDialogState extends State<AIInputDialog> {
         children: [
           const Icon(Icons.auto_awesome, color: Colors.blue),
           const SizedBox(width: 8),
-          Text(l10n.aiQuickAdd),
+          Text(l10n.aiQuickAdd, style: AppTheme.dialogTitleStyle(context)),
         ],
       ),
       content: Column(
@@ -124,14 +125,14 @@ class _AIInputDialogState extends State<AIInputDialog> {
             const SizedBox(height: 8),
             Text(
               _error!,
-              style: const TextStyle(color: Colors.red, fontSize: 12),
+              style: AppTheme.smallRegularStyle(context, color: Colors.red),
             ),
           ],
           if (_isProcessing) ...[
             const SizedBox(height: 16),
             const CircularProgressIndicator(),
             const SizedBox(height: 8),
-            Text(l10n.aiProcessing),
+            Text(l10n.aiProcessing, style: AppTheme.smallMediumStyle(context)),
           ],
         ],
       ),

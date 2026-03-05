@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:velotask/l10n/app_localizations.dart';
 import 'package:velotask/models/tag.dart';
 import 'package:velotask/services/todo_storage.dart';
+import 'package:velotask/theme/app_theme.dart';
 import 'package:velotask/utils/logger.dart';
 
 class TagsScreen extends StatefulWidget {
@@ -49,6 +51,7 @@ class _TagsScreenState extends State<TagsScreen> {
   }
 
   Future<void> _addTag() async {
+    final l10n = AppLocalizations.of(context)!;
     final name = _tagNameController.text.trim();
     if (name.isEmpty) {
       _logger.warning('Attempted to add tag with empty name');
@@ -71,7 +74,7 @@ class _TagsScreenState extends State<TagsScreen> {
             content: Text(
               e is TagAlreadyExistsException
                   ? e.toString()
-                  : 'Failed to add tag',
+                  : l10n.failedToAddTag,
             ),
           ),
         );
@@ -97,24 +100,41 @@ class _TagsScreenState extends State<TagsScreen> {
     }
   }
 
+  BoxDecoration _surfaceDecoration(BuildContext context) {
+    return BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(
+        color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+      ),
+    );
+  }
+
   void _showAddTagDialog() {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Add New Tag'),
+          title: Text(
+            l10n.addNewTag,
+            style: AppTheme.dialogTitleStyle(context),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: _tagNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Tag Name',
+                decoration: InputDecoration(
+                  labelText: l10n.tagName,
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Select Color'),
+              Text(
+                l10n.selectColor,
+                style: AppTheme.captionStrongStyle(context),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -133,7 +153,10 @@ class _TagsScreenState extends State<TagsScreen> {
                         color: color,
                         shape: BoxShape.circle,
                         border: _selectedColor == color
-                            ? Border.all(color: Colors.black, width: 2)
+                            ? Border.all(
+                                color: Theme.of(context).primaryColor,
+                                width: 2,
+                              )
                             : null,
                       ),
                     ),
@@ -145,9 +168,9 @@ class _TagsScreenState extends State<TagsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
-            FilledButton(onPressed: _addTag, child: const Text('Add')),
+            FilledButton(onPressed: _addTag, child: Text(l10n.create)),
           ],
         ),
       ),
@@ -156,30 +179,52 @@ class _TagsScreenState extends State<TagsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Tags')),
+      appBar: AppBar(
+        title: Text(
+          l10n.manageTags,
+          style: AppTheme.pageTitleStyle(
+            context,
+            color: Theme.of(context).primaryColor,
+          ),
+        ),
+      ),
       body: _tags.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.label_outline,
-                    size: 64,
-                    color: Theme.of(context).disabledColor,
+          ? ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 28,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No tags created yet',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).disabledColor,
-                    ),
+                  decoration: _surfaceDecoration(context),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.label_outline,
+                        size: 54,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.secondary.withValues(alpha: 0.7),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        l10n.noTags,
+                        style: AppTheme.bodyStrongStyle(context).copyWith(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             )
-          : ListView.builder(
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               itemCount: _tags.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final tag = _tags[index];
                 Color tagColor = Colors.blue;
@@ -190,12 +235,34 @@ class _TagsScreenState extends State<TagsScreen> {
                     );
                   } catch (_) {}
                 }
-                return ListTile(
-                  leading: Icon(Icons.label, color: tagColor),
-                  title: Text(tag.name),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _deleteTag(tag),
+                return Container(
+                  decoration: _surfaceDecoration(context),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    leading: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: tagColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.label, color: tagColor, size: 18),
+                    ),
+                    title: Text(tag.name),
+                    titleTextStyle: AppTheme.bodyMediumStrongStyle(
+                      context,
+                    ).copyWith(color: Theme.of(context).colorScheme.onSurface),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _deleteTag(tag),
+                      constraints: const BoxConstraints(
+                        minWidth: 44,
+                        minHeight: 44,
+                      ),
+                    ),
                   ),
                 );
               },

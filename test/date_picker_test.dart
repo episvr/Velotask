@@ -75,6 +75,10 @@ void main() {
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
+    // Deadline now includes time selection; confirm default time.
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
     // Verify "To" picker now shows "M/15"
     // We need to know the month. The date picker defaults to current month.
     // So it should be "M/15".

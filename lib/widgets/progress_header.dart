@@ -13,6 +13,7 @@ class ProgressHeader extends StatelessWidget {
     int completedCount = todos.where((todo) => todo.isCompleted).length;
     int totalCount = todos.length;
     double progress = totalCount == 0 ? 0 : completedCount / totalCount;
+    final allCompleted = totalCount > 0 && completedCount == totalCount;
 
     if (totalCount == 0) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
@@ -71,19 +72,15 @@ class ProgressHeader extends StatelessWidget {
                           children: [
                             Text(
                               '${(value * 100).toInt()}',
-                              style: AppTheme.headerStyle(context).copyWith(
-                                fontSize: 56,
-                                fontWeight: FontWeight.w900,
+                              style: AppTheme.progressValueStyle(
+                                context,
                                 color: Theme.of(context).primaryColor,
-                                height: 1.0,
-                                letterSpacing: -2.0,
                               ),
                             ),
                             Text(
                               '%',
-                              style: AppTheme.headerStyle(context).copyWith(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
+                              style: AppTheme.progressSymbolStyle(
+                                context,
                                 color: Theme.of(context).colorScheme.secondary,
                               ),
                             ),
@@ -92,10 +89,8 @@ class ProgressHeader extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           AppLocalizations.of(context)!.completed,
-                          style: AppTheme.headerStyle(context).copyWith(
-                            fontSize: 11,
-                            letterSpacing: 3.0,
-                            fontWeight: FontWeight.bold,
+                          style: AppTheme.progressCaptionStyle(
+                            context,
                             color: Theme.of(context).colorScheme.secondary,
                           ),
                         ),
@@ -104,6 +99,27 @@ class ProgressHeader extends StatelessWidget {
                   },
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOutBack,
+              switchOutCurve: Curves.easeInCubic,
+              child: allCompleted
+                  ? TweenAnimationBuilder<double>(
+                      key: const ValueKey('all_done_celebration'),
+                      duration: const Duration(milliseconds: 380),
+                      curve: Curves.easeOutBack,
+                      tween: Tween<double>(begin: 0.85, end: 1.0),
+                      builder: (context, value, child) {
+                        return Transform.scale(scale: value, child: child);
+                      },
+                      child: Text(
+                        '🎉',
+                        style: AppTheme.celebrationEmojiStyle(context),
+                      ),
+                    )
+                  : const SizedBox.shrink(key: ValueKey('no_celebration')),
             ),
           ],
         ),

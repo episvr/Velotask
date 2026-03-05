@@ -32,11 +32,9 @@ class HomeAppBar extends StatelessWidget {
         children: [
           Text(
             l10n.appName,
-            style: AppTheme.headerStyle(context).copyWith(
+            style: AppTheme.brandTitleStyle(
+              context,
               color: Theme.of(context).primaryColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 24,
-              letterSpacing: -0.5,
             ),
           ),
         ],

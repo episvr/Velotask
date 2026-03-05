@@ -51,9 +51,8 @@ class TimelineScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           l10n.timeline.toUpperCase(),
-          style: AppTheme.headerStyle(context).copyWith(
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.0,
+          style: AppTheme.pageTitleStyle(
+            context,
             color: Theme.of(context).primaryColor,
           ),
         ),

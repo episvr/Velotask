@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:velotask/l10n/app_localizations.dart';
+import 'package:velotask/theme/app_theme.dart';
 
 class EmptyState extends StatefulWidget {
   const EmptyState({super.key});
@@ -57,11 +58,10 @@ class _EmptyStateState extends State<EmptyState>
                 const SizedBox(height: 16),
                 Text(
                   AppLocalizations.of(context)!.noTasksFound,
-                  style: TextStyle(
+                  style: AppTheme.bodyStrongStyle(context).copyWith(
                     color: Theme.of(
                       context,
                     ).colorScheme.secondary.withValues(alpha: 0.6),
-                    fontSize: 16,
                   ),
                 ),
               ],

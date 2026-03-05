@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:velotask/l10n/app_localizations.dart';
 import 'package:velotask/models/tag.dart';
 import 'package:velotask/models/todo.dart';
+import 'package:velotask/screens/dashboard_screen.dart';
 import 'package:velotask/screens/timeline_screen.dart';
 import 'package:velotask/screens/todo_list_view.dart';
 import 'package:velotask/services/ai_service.dart';
@@ -238,7 +239,9 @@ class _MainScreenState extends State<MainScreen> {
                 onRefreshTags: _loadTags,
                 onAIAction: _showAIInputDialog,
               )
-            : TimelineScreen(key: const ValueKey('timeline'), todos: todos),
+            : _selectedIndex == 1
+            ? TimelineScreen(key: const ValueKey('timeline'), todos: todos)
+            : DashboardScreen(key: const ValueKey('dashboard'), todos: todos),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
@@ -257,6 +260,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: const Icon(Icons.calendar_today_outlined),
             selectedIcon: const Icon(Icons.calendar_today),
             label: l10n.timeline,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.person_outline),
+            selectedIcon: const Icon(Icons.person),
+            label: l10n.dashboard,
           ),
         ],
       ),
