@@ -88,5 +88,7 @@
   "aiApiKeyHelper": "AI 提供商的 API 密钥",
   "aiModelHelper": "模型名称 (如 gpt-3.5-turbo, deepseek-chat)",
   "aiProcessing": "处理中...",
-  "aiSubmit": "提交"
+  "aiSubmit": "提交",
+  "dailyReminderTitle": "每日任务概览",
+  "dailyReminderBody": "今天您有 {count} 个待办任务。"
 }

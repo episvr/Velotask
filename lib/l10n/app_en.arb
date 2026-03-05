@@ -88,5 +88,7 @@
   "aiApiKeyHelper": "Your API key for the AI provider",
   "aiModelHelper": "The model name (e.g., gpt-3.5-turbo, deepseek-chat)",
   "aiProcessing": "Processing...",
-  "aiSubmit": "Submit"
+  "aiSubmit": "Submit",
+  "dailyReminderTitle": "Daily Overview",
+  "dailyReminderBody": "You have {count} active tasks today."
 }

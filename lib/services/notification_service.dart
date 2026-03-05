@@ -1,23 +1,53 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'package:velotask/l10n/app_localizations.dart';
 import 'package:velotask/models/todo.dart';
+import 'package:velotask/utils/logger.dart';
 import 'package:velotask/utils/priority_engine.dart';
 
 class NotificationService {
-  static const String _channelId = 'velotask_priority';
+  static final NotificationService _instance = NotificationService._internal();
+
+  factory NotificationService() {
+    return _instance;
+  }
+
+  NotificationService._internal();
+
+  static const String _channelId = 'velotask_reminders';
   static const String _channelName = 'Task Reminders';
   static const String _channelDescription =
-      'Priority and deadline reminder notifications';
-  static const String _statePrefix = 'notif_state_';
+      'Reminders for deadlines and daily summaries';
+
+  static const int _dailySummaryId = 888888;
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  static final Logger _logger = AppLogger.getLogger('NotificationService');
 
   Future<void> initialize() async {
     if (_initialized) {
       return;
+    }
+
+    try {
+      tz.initializeTimeZones();
+      final dynamic timeZoneResult = await FlutterTimezone.getLocalTimezone();
+      final String timeZoneName = switch (timeZoneResult) {
+        String value => value,
+        TimezoneInfo value => value.identifier,
+        _ => 'UTC',
+      };
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      _logger.warning('Failed to initialize timezone: $e');
+      // Fallback to UTC
+      try {
+        tz.setLocalLocation(tz.getLocation('UTC'));
+      } catch (_) {}
     }
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -28,7 +58,12 @@ class NotificationService {
     );
 
     const settings = InitializationSettings(android: androidInit, iOS: iosInit);
-    await _plugin.initialize(settings);
+    await _plugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (details) {
+        _logger.info('Notification clicked: ${details.payload}');
+      },
+    );
 
     final android = _plugin
         .resolvePlatformSpecificImplementation<
@@ -43,6 +78,7 @@ class NotificationService {
     await ios?.requestPermissions(alert: true, badge: true, sound: true);
 
     _initialized = true;
+    _logger.info('NotificationService initialized');
   }
 
   Future<void> syncForTodos(List<Todo> todos, AppLocalizations l10n) async {
@@ -50,189 +86,211 @@ class NotificationService {
       await initialize();
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final activeIds = todos.map((todo) => todo.id).toSet();
+    // Cancel all previously scheduled notifications to ensure clean slate
+    await _plugin.cancelAll();
+    _logger.info('Cancelled all notifications for sync');
+
     final now = DateTime.now();
+    int activeCount = 0;
 
     for (final todo in todos) {
-      final stateKey = '$_statePrefix${todo.id}';
-      final previousState = prefs.getString(stateKey);
-      final previousTier = _parseTier(previousState);
-      final previousNear24 = _parseFlag(previousState, 'near24h');
-      final previousNear3 = _parseFlag(previousState, 'near3h');
-      final previousOverdue = _parseFlag(previousState, 'overdue');
+      if (todo.isCompleted) continue;
 
-      final tier = PriorityEngine.notificationTier(
-        todo,
-        now: now,
-        allTodos: todos,
-      );
-      var near24 = false;
-      var near3 = false;
-      var overdue = false;
+      activeCount++;
 
-      final ddl = todo.ddl;
-      if (ddl != null && !todo.isCompleted) {
-        final hoursLeft = ddl.difference(now).inMinutes / 60.0;
-        near24 = hoursLeft <= 24 && hoursLeft > 3;
-        near3 = hoursLeft <= 3 && hoursLeft > 0;
-        overdue = hoursLeft <= 0;
+      // Schedule DDL reminder if DDL is in the future
+      if (todo.ddl != null && todo.ddl!.isAfter(now)) {
+        await _scheduleTaskReminder(todo, l10n);
       }
+    }
 
-      if (!todo.isCompleted) {
-        if (_isTierHigher(tier, previousTier) && _isTierNotifiable(tier)) {
-          await _showNotification(
-            id: todo.id * 10 + 1,
-            title: l10n.notifyPriorityTitle,
-            body: '${todo.title} • ${_tierText(tier, l10n)}',
-          );
-        }
+    // Schedule daily summary
+    await _scheduleDailySummary(activeCount, l10n);
+  }
 
-        if (near24 && !previousNear24) {
-          await _showNotification(
-            id: todo.id * 10 + 2,
-            title: l10n.notifyDueSoonTitle,
-            body: '${todo.title} • ${l10n.notifyDue24hBody}',
-          );
-        }
+  Future<void> _scheduleTaskReminder(Todo todo, AppLocalizations l10n) async {
+    try {
+      final now = tz.TZDateTime.now(tz.local);
+      final ddl = tz.TZDateTime.from(todo.ddl!, tz.local);
 
-        if (near3 && !previousNear3) {
-          await _showNotification(
-            id: todo.id * 10 + 3,
-            title: l10n.notifyDueSoonTitle,
-            body: '${todo.title} • ${l10n.notifyDue3hBody}',
-          );
-        }
+      // 1. Calculate the ideal reminder time based on Urgency
+      // We want to remind when the task enters "High" urgency (0.7)
+      // or "Critical" urgency (0.9), or just before deadline.
 
-        if (overdue && !previousOverdue) {
-          await _showNotification(
-            id: todo.id * 10 + 4,
-            title: l10n.notifyOverdueTitle,
-            body: '${todo.title} • ${l10n.notifyOverdueBody}',
-          );
-        }
-      }
+      tz.TZDateTime? scheduledDate;
 
-      if (todo.isCompleted) {
-        await prefs.remove(stateKey);
+      // Check time for Urgency 0.7 (High)
+      var highUrgencyTime = _findTimeForUrgency(todo, 0.7);
+      if (highUrgencyTime != null && highUrgencyTime.isAfter(now)) {
+        scheduledDate = highUrgencyTime;
       } else {
-        await prefs.setString(
-          stateKey,
-          _encodeState(
-            tier: tier,
-            near24h: near24 || previousNear24,
-            near3h: near3 || previousNear3,
-            overdue: overdue || previousOverdue,
+        // Fallback: Check time for Urgency 0.85 (Critical)
+        var criticalUrgencyTime = _findTimeForUrgency(todo, 0.85);
+        if (criticalUrgencyTime != null && criticalUrgencyTime.isAfter(now)) {
+          scheduledDate = criticalUrgencyTime;
+        } else {
+          // Fallback: 1 hour before deadline
+          var oneHourBefore = ddl.subtract(const Duration(hours: 1));
+          if (oneHourBefore.isAfter(now)) {
+            scheduledDate = oneHourBefore;
+          }
+        }
+      }
+
+      if (scheduledDate == null) {
+        _logger.fine('No suitable future reminder time for "${todo.title}"');
+        return;
+      }
+
+      final UrgencyBand band = PriorityEngine.urgencyBand(
+        todo,
+        now: scheduledDate,
+      );
+      final String urgencyText = switch (band) {
+        UrgencyBand.impossible => l10n.urgencyImpossible,
+        UrgencyBand.high => l10n.urgencyHigh,
+        UrgencyBand.medium => l10n.urgencyMedium,
+        UrgencyBand.relaxed => l10n.urgencyRelaxed,
+      };
+
+      await _plugin.zonedSchedule(
+        todo.id,
+        l10n.notifyPriorityTitle,
+        '${todo.title} • ${l10n.urgencyLabel}: $urgencyText',
+        scheduledDate,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channelId,
+            _channelName,
+            channelDescription: _channelDescription,
+            importance: Importance.high,
+            priority: Priority.high,
           ),
+          iOS: const DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'todo_${todo.id}',
+      );
+      _logger.fine(
+        'Scheduled reminder for "${todo.title}" at $scheduledDate (Urgency based)',
+      );
+    } catch (e) {
+      _logger.warning('Failed to schedule reminder for todo ${todo.id}: $e');
+    }
+  }
+
+  /// Finds the approximate time when the task reaches the target urgency.
+  /// Returns null if urgency is never reached or calculation fails.
+  tz.TZDateTime? _findTimeForUrgency(Todo todo, double targetUrgency) {
+    if (todo.ddl == null) return null;
+
+    // Binary search range: 0 to 30 days before DDL
+    double minMinutes = 0;
+    double maxMinutes = 30 * 24 * 60;
+
+    // Tolerance for binary search
+    const double epsilon = 0.05;
+
+    // We are searching for `minutesBeforeDDL`
+    // Function: urgency(ddl - minutes)
+    // Urgency increases as minutes -> 0.
+
+    // quick check at max range (early)
+    if (_getUrgencyAt(todo, maxMinutes) >= targetUrgency) {
+      // already high urgency even 30 days out? (unlikely for normal tasks)
+      return tz.TZDateTime.from(
+        todo.ddl!.subtract(Duration(minutes: maxMinutes.toInt())),
+        tz.local,
+      );
+    }
+
+    // quick check at min range (deadline)
+    if (_getUrgencyAt(todo, minMinutes) < targetUrgency) {
+      // never reaches urgency?
+      return null;
+    }
+
+    for (int i = 0; i < 20; i++) {
+      // 20 iterations is precise enough
+      double mid = (minMinutes + maxMinutes) / 2;
+      double u = _getUrgencyAt(todo, mid);
+
+      if ((u - targetUrgency).abs() < epsilon) {
+        return tz.TZDateTime.from(
+          todo.ddl!.subtract(Duration(minutes: mid.toInt())),
+          tz.local,
         );
       }
-    }
 
-    await _cleanupRemovedTodoStates(prefs, activeIds);
-  }
-
-  Future<void> _cleanupRemovedTodoStates(
-    SharedPreferences prefs,
-    Set<int> activeIds,
-  ) async {
-    final keys = prefs
-        .getKeys()
-        .where((k) => k.startsWith(_statePrefix))
-        .toList();
-    for (final key in keys) {
-      final id = int.tryParse(key.substring(_statePrefix.length));
-      if (id == null || activeIds.contains(id)) {
-        continue;
+      if (u < targetUrgency) {
+        // Urgency is too low, we need to be closer to deadline (less minutes)
+        maxMinutes = mid;
+      } else {
+        // Urgency is too high, we need to be further from deadline (more minutes)
+        minMinutes = mid;
       }
-      await prefs.remove(key);
     }
-  }
 
-  Future<void> _showNotification({
-    required int id,
-    required String title,
-    required String body,
-  }) async {
-    const android = AndroidNotificationDetails(
-      _channelId,
-      _channelName,
-      channelDescription: _channelDescription,
-      importance: Importance.high,
-      priority: Priority.high,
+    return tz.TZDateTime.from(
+      todo.ddl!.subtract(Duration(minutes: minMinutes.toInt())),
+      tz.local,
     );
-    const ios = DarwinNotificationDetails();
-
-    const details = NotificationDetails(android: android, iOS: ios);
-    await _plugin.show(id, title, body, details);
   }
 
-  bool _isTierNotifiable(PriorityNotificationTier tier) {
-    return tier == PriorityNotificationTier.medium ||
-        tier == PriorityNotificationTier.high;
+  double _getUrgencyAt(Todo todo, double minutesBeforeDDL) {
+    final checkTime = todo.ddl!.subtract(
+      Duration(minutes: minutesBeforeDDL.toInt()),
+    );
+    return PriorityEngine.urgency(todo, now: checkTime);
   }
 
-  bool _isTierHigher(
-    PriorityNotificationTier current,
-    PriorityNotificationTier previous,
-  ) {
-    return _tierRank(current) > _tierRank(previous);
-  }
+  Future<void> _scheduleDailySummary(int count, AppLocalizations l10n) async {
+    try {
+      final now = tz.TZDateTime.now(tz.local);
+      // Schedule for 09:00 AM
+      var scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        9,
+        0,
+      );
 
-  int _tierRank(PriorityNotificationTier tier) {
-    return switch (tier) {
-      PriorityNotificationTier.none => 0,
-      PriorityNotificationTier.low => 1,
-      PriorityNotificationTier.medium => 2,
-      PriorityNotificationTier.high => 3,
-    };
-  }
+      if (scheduledDate.isBefore(now)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      }
 
-  String _tierText(PriorityNotificationTier tier, AppLocalizations l10n) {
-    return switch (tier) {
-      PriorityNotificationTier.high => l10n.priorityHigh,
-      PriorityNotificationTier.medium => l10n.priorityMed,
-      PriorityNotificationTier.low => l10n.priorityLow,
-      PriorityNotificationTier.none => l10n.filterActive,
-    };
-  }
-
-  PriorityNotificationTier _parseTier(String? rawState) {
-    if (rawState == null) {
-      return PriorityNotificationTier.none;
+      await _plugin.zonedSchedule(
+        _dailySummaryId,
+        l10n.dailyReminderTitle,
+        l10n.dailyReminderBody(count),
+        scheduledDate,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channelId,
+            _channelName,
+            channelDescription: _channelDescription,
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: const DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'daily_summary',
+      );
+      _logger.info('Scheduled daily summary at $scheduledDate');
+    } catch (e) {
+      _logger.warning('Failed to schedule daily summary: $e');
     }
-    final parts = rawState.split('|');
-    final tierValue = int.tryParse(parts.isEmpty ? '0' : parts.first) ?? 0;
-    return switch (tierValue) {
-      3 => PriorityNotificationTier.high,
-      2 => PriorityNotificationTier.medium,
-      1 => PriorityNotificationTier.low,
-      _ => PriorityNotificationTier.none,
-    };
   }
 
-  bool _parseFlag(String? rawState, String name) {
-    if (rawState == null) {
-      return false;
-    }
-    return rawState.split('|').skip(1).any((e) => e == name);
-  }
-
-  String _encodeState({
-    required PriorityNotificationTier tier,
-    required bool near24h,
-    required bool near3h,
-    required bool overdue,
-  }) {
-    final flags = <String>[];
-    if (near24h) {
-      flags.add('near24h');
-    }
-    if (near3h) {
-      flags.add('near3h');
-    }
-    if (overdue) {
-      flags.add('overdue');
-    }
-    return '${_tierRank(tier)}|${flags.join('|')}';
+  Future<void> cancelAll() async {
+    await _plugin.cancelAll();
   }
 }
