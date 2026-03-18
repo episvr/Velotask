@@ -11,17 +11,6 @@ class TodoStorage {
     final dir = await getApplicationDocumentsDirectory();
     _isar = await Isar.open([TodoSchema, TagSchema], directory: dir.path);
 
-    // Seed default tags if empty
-    final count = await _isar!.tags.count();
-    if (count == 0) {
-      await _isar!.writeTxn(() async {
-        await _isar!.tags.putAll([
-          Tag(name: 'TDL', color: '#2196F3'), // Blue
-          Tag(name: 'DDL', color: '#F44336'), // Red
-          Tag(name: 'WTD', color: '#FFC107'), // Amber
-        ]);
-      });
-    }
   }
 
   Future<List<Todo>> loadTodos() async {

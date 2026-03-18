@@ -61,6 +61,7 @@ class _MainScreenState extends State<MainScreen> {
     DateTime? ddl,
     int importance,
     List<Tag> tags,
+    TaskType taskType,
   ) async {
     if (title.isEmpty) return;
 
@@ -70,6 +71,7 @@ class _MainScreenState extends State<MainScreen> {
       startDate: startDate,
       ddl: ddl,
       importance: importance,
+      taskType: taskType,
     );
     newTodo.tags.addAll(tags);
 
@@ -108,13 +110,14 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (context) => AddTodoDialog(
         todo: todo,
-        onAdd: (title, desc, startDate, ddl, importance, tags) async {
+        onAdd: (title, desc, startDate, ddl, importance, tags, taskType) async {
           final updatedTodo = todo.copyWith(
             title: title,
             description: desc,
             startDate: startDate,
             ddl: ddl,
             importance: importance,
+            taskType: taskType,
           );
           updatedTodo.tags.clear();
           updatedTodo.tags.addAll(tags);

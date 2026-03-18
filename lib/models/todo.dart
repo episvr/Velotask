@@ -3,6 +3,10 @@ import 'package:velotask/models/tag.dart';
 
 part 'todo.g.dart';
 
+/// A task with a start/end date range shown as a bar on the timeline.
+/// A deadline is a point-in-time task shown as a vertical marker on the timeline.
+enum TaskType { task, deadline }
+
 @collection
 class Todo {
   Id id = Isar.autoIncrement;
@@ -15,6 +19,9 @@ class Todo {
   DateTime? ddl;
   int importance; // 0: Low, 1: Normal, 2: High
 
+  @enumerated
+  TaskType taskType;
+
   final tags = IsarLinks<Tag>();
 
   Todo({
@@ -26,6 +33,7 @@ class Todo {
     this.startDate,
     this.ddl,
     this.importance = 1,
+    this.taskType = TaskType.task,
   });
 
   // 复制方法
@@ -38,6 +46,7 @@ class Todo {
     DateTime? startDate,
     DateTime? ddl,
     int? importance,
+    TaskType? taskType,
   }) {
     return Todo(
       id: id ?? this.id,
@@ -48,6 +57,7 @@ class Todo {
       startDate: startDate ?? this.startDate,
       ddl: ddl ?? this.ddl,
       importance: importance ?? this.importance,
+      taskType: taskType ?? this.taskType,
     );
   }
 }

@@ -14,6 +14,7 @@ class AddTodoDialog extends StatefulWidget {
     DateTime? ddl,
     int importance,
     List<Tag> tags,
+    TaskType taskType,
   )
   onAdd;
 
@@ -29,6 +30,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
   DateTime _startDate = DateTime.now();
   DateTime? _ddl;
   int _importance = 1;
+  TaskType _taskType = TaskType.task;
   List<Tag> _availableTags = [];
   List<Tag> _selectedTags = [];
   final TodoStorage _storage = TodoStorage();
@@ -44,6 +46,7 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
           widget.todo!.startDate ?? widget.todo!.createdAt ?? DateTime.now();
       _ddl = widget.todo!.ddl;
       _importance = widget.todo!.importance;
+      _taskType = widget.todo!.taskType;
       _selectedTags = widget.todo!.tags.toList();
     }
   }
@@ -131,43 +134,76 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
               ),
               const SizedBox(height: 24),
 
-              // Date Picker
+              // Task Type Selector
               DialogInputRow(
-                icon: Icons.calendar_today_outlined,
+                icon: Icons.category_outlined,
                 child: Row(
                   children: [
-                    Expanded(
-                      child: DialogDatePicker(
-                        label: l10n.dateFrom,
-                        date: _startDate,
-                        firstDate: DateTime.now().subtract(
-                          const Duration(days: 1),
-                        ), // Allow today
-                        onSelect: (d) {
-                          if (d != null) {
-                            setState(() {
-                              _startDate = d;
-                              // If DDL is before new start date, reset it or adjust it
-                              if (_ddl != null && _ddl!.isBefore(d)) {
-                                _ddl = null;
-                              }
-                            });
-                          }
-                        },
-                      ),
+                    _TypeChip(
+                      label: l10n.taskTypeTask,
+                      selected: _taskType == TaskType.task,
+                      onTap: () => setState(() => _taskType = TaskType.task),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DialogDatePicker(
-                        label: l10n.dateTo,
-                        date: _ddl,
-                        firstDate: _startDate,
-                        onSelect: (d) => setState(() => _ddl = d),
-                        isOptional: true,
-                      ),
+                    const SizedBox(width: 8),
+                    _TypeChip(
+                      label: l10n.taskTypeDeadline,
+                      selected: _taskType == TaskType.deadline,
+                      onTap: () => setState(() {
+                        _taskType = TaskType.deadline;
+                        // deadline only needs ddl; clear startDate usage
+                      }),
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // Date Picker
+              DialogInputRow(
+                icon: Icons.calendar_today_outlined,
+                child: _taskType == TaskType.deadline
+                    ? DialogDatePicker(
+                        label: l10n.dateTo,
+                        date: _ddl,
+                        firstDate: DateTime.now().subtract(
+                          const Duration(days: 1),
+                        ),
+                        onSelect: (d) => setState(() => _ddl = d),
+                        isOptional: true,
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: DialogDatePicker(
+                              label: l10n.dateFrom,
+                              date: _startDate,
+                              firstDate: DateTime.now().subtract(
+                                const Duration(days: 1),
+                              ),
+                              onSelect: (d) {
+                                if (d != null) {
+                                  setState(() {
+                                    _startDate = d;
+                                    if (_ddl != null && _ddl!.isBefore(d)) {
+                                      _ddl = null;
+                                    }
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DialogDatePicker(
+                              label: l10n.dateTo,
+                              date: _ddl,
+                              firstDate: _startDate,
+                              onSelect: (d) => setState(() => _ddl = d),
+                              isOptional: true,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
               const SizedBox(height: 16),
 
@@ -253,10 +289,11 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
               widget.onAdd(
                 _titleController.text,
                 _descController.text,
-                _startDate,
+                _taskType == TaskType.deadline ? null : _startDate,
                 _ddl,
                 _importance,
                 _selectedTags,
+                _taskType,
               );
               Navigator.pop(context);
             }
@@ -275,6 +312,46 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TypeChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TypeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).primaryColor;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? color : Colors.grey.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+            color: selected
+                ? color
+                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      ),
     );
   }
 }
