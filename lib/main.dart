@@ -10,7 +10,7 @@ final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 final ValueNotifier<Locale?> localeNotifier = ValueNotifier(null);
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized(); //
+  WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
 
   // Load Theme
@@ -34,11 +34,10 @@ Future<void> main() async {
 // 根组件
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      // 监听Theme Mode
+      // 监听
       listenable: Listenable.merge([themeNotifier, localeNotifier]),
       builder: (context, child) {
         return MaterialApp(
@@ -57,7 +56,7 @@ class MyApp extends StatelessWidget {
             Locale('en'), // English
             Locale('zh'), // Chinese
           ],
-          home: const MainScreen(),
+          home: const MainScreen(), // 控制页面布局
           debugShowCheckedModeBanner: false,
         );
       },

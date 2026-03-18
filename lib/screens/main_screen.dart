@@ -72,13 +72,13 @@ class _MainScreenState extends State<MainScreen> {
       ddl: ddl,
       importance: importance,
       taskType: taskType,
+      tags: tags,
     );
-    newTodo.tags.addAll(tags);
 
-    await _storage.addTodo(newTodo);
+    final saved = await _storage.addTodo(newTodo);
     if (mounted) {
       setState(() {
-        todos.add(newTodo);
+        todos.add(saved);
       });
     }
   }
@@ -111,15 +111,13 @@ class _MainScreenState extends State<MainScreen> {
       builder: (context) => AddTodoDialog(
         todo: todo,
         onAdd: (title, desc, startDate, ddl, importance, tags, taskType) async {
-          // Mutate the original Isar object directly so IsarLinks context is preserved.
           todo.title = title;
           todo.description = desc;
           todo.startDate = startDate;
           todo.ddl = ddl;
           todo.importance = importance;
           todo.taskType = taskType;
-          todo.tags.clear();
-          todo.tags.addAll(tags);
+          todo.tags = tags;
 
           await _storage.updateTodo(todo);
 
