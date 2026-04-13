@@ -192,6 +192,8 @@ class DialogDatePicker extends StatelessWidget {
           return;
         }
 
+        if (!context.mounted) return;
+
         final initialTime = date != null
             ? TimeOfDay(hour: date!.hour, minute: date!.minute)
             : const TimeOfDay(hour: 23, minute: 59);

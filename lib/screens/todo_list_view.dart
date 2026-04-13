@@ -200,12 +200,13 @@ class _TodoListViewState extends State<TodoListView>
             final opacity = 0.9 + (0.1 * value);
             return Opacity(
               opacity: opacity,
-              child: Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()
-                  ..translate(0.0, 6 * (1 - value))
-                  ..scale(0.992 + (0.008 * value)),
-                child: child,
+              child: Transform.translate(
+                offset: Offset(0, 6 * (1 - value)),
+                child: Transform.scale(
+                  alignment: Alignment.center,
+                  scale: 0.992 + (0.008 * value),
+                  child: child,
+                ),
               ),
             );
           },

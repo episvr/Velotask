@@ -148,6 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (!mounted) return;
       await _saveAISettings();
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('模型测试成功，可正常调用')));
