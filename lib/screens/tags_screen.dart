@@ -61,7 +61,7 @@ class _TagsScreenState extends State<TagsScreen> {
     // Use toARGB32() instead of deprecated .value
     final colorHex =
         '#${_selectedColor.toARGB32().toRadixString(16).substring(2)}';
-    final newTag = Tag(name: name, color: colorHex);
+    final newTag = Tag.unsaved(name: name, color: colorHex);
 
     try {
       await _storage.addTag(newTag);
@@ -69,15 +69,9 @@ class _TagsScreenState extends State<TagsScreen> {
     } catch (e) {
       // If insertion failed (e.g., unique constraint), show a friendly message
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e is TagAlreadyExistsException
-                  ? e.toString()
-                  : l10n.failedToAddTag,
-            ),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.failedToAddTag)));
       }
       _logger.warning('Tag already exists or failed to add: ${newTag.name}');
       return;

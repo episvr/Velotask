@@ -1,11 +1,12 @@
-import 'package:isar/isar.dart';
 import 'package:velotask/models/tag.dart';
 
-part 'todo.g.dart';
+/// Logical task type.
+enum TaskType { task, deadline }
 
-@collection
+/// Plain data class used throughout the UI.
+/// The actual Drift table definition lives in database.dart (Todos table).
 class Todo {
-  Id id = Isar.autoIncrement;
+  final int id;
 
   String title;
   String description;
@@ -14,12 +15,14 @@ class Todo {
   DateTime? startDate;
   DateTime? ddl;
   int importance; // 0: Low, 1: Normal, 2: High
+  TaskType taskType;
   double? estimatedEffortHours;
 
-  final tags = IsarLinks<Tag>();
+  /// Tags associated with this todo (loaded alongside the todo).
+  List<Tag> tags;
 
   Todo({
-    this.id = Isar.autoIncrement,
+    this.id = 0,
     required this.title,
     this.description = '',
     this.isCompleted = false,
@@ -27,12 +30,13 @@ class Todo {
     this.startDate,
     this.ddl,
     this.importance = 1,
+    this.taskType = TaskType.task,
+    List<Tag> tags = const [],
     this.estimatedEffortHours,
-  });
+  }) : tags = List<Tag>.from(tags);
 
-  // 复制方法
   Todo copyWith({
-    Id? id,
+    int? id,
     String? title,
     String? description,
     bool? isCompleted,
@@ -40,6 +44,8 @@ class Todo {
     DateTime? startDate,
     DateTime? ddl,
     int? importance,
+    TaskType? taskType,
+    List<Tag>? tags,
     double? estimatedEffortHours,
   }) {
     return Todo(
@@ -51,6 +57,8 @@ class Todo {
       startDate: startDate ?? this.startDate,
       ddl: ddl ?? this.ddl,
       importance: importance ?? this.importance,
+      taskType: taskType ?? this.taskType,
+      tags: tags ?? this.tags,
       estimatedEffortHours: estimatedEffortHours ?? this.estimatedEffortHours,
     );
   }

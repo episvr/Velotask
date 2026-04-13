@@ -9,8 +9,8 @@ void main() {
   testWidgets('duplicate tag updates color without crash', (tester) async {
     final storage = TodoStorage();
 
-    final tag1 = Tag(name: 'Work', color: '#FF0000');
-    final tag2 = Tag(name: 'Work', color: '#00FF00');
+    final tag1 = Tag.unsaved(name: 'Work', color: '#FF0000');
+    final tag2 = Tag.unsaved(name: 'Work', color: '#00FF00');
 
     await storage.addTag(tag1);
     await storage.addTag(tag2);

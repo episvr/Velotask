@@ -168,9 +168,7 @@ class _MainScreenState extends State<MainScreen> {
     final filtered = results.where((r) => r.title.trim().isNotEmpty).toList();
     if (filtered.isEmpty) return;
 
-    final tagByName = {
-      for (final tag in tags) tag.name.toLowerCase(): tag,
-    };
+    final tagByName = {for (final tag in tags) tag.name.toLowerCase(): tag};
 
     var tagsAdded = false;
     for (final result in filtered) {
@@ -180,10 +178,10 @@ class _MainScreenState extends State<MainScreen> {
         final key = name.toLowerCase();
         if (tagByName.containsKey(key)) continue;
 
-        final newTag = Tag(name: name);
+        final newTag = Tag.unsaved(name: name);
         try {
-          await _storage.addTag(newTag);
-          tagByName[key] = newTag;
+          final savedTag = await _storage.addTag(newTag);
+          tagByName[key] = savedTag;
           tagsAdded = true;
         } catch (_) {
           // If tag exists concurrently, we'll refresh after loop.

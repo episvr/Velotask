@@ -85,9 +85,7 @@ void main() {
   });
 
   group('TodoItem Tests', () {
-    testWidgets('renders todo title', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('renders todo title', (WidgetTester tester) async {
       final todo = Todo(title: 'Test Todo', description: 'Test Description');
 
       await tester.pumpWidget(
@@ -102,9 +100,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Title is shown in the list row; description is hidden until detail view.
+      // Current UI shows both title and short description in the list row.
       expect(find.text('Test Todo'), findsOneWidget);
-      expect(find.text('Test Description'), findsNothing);
+      expect(find.text('Test Description'), findsOneWidget);
     });
 
     testWidgets('tapping item opens detail dialog', (
