@@ -4,6 +4,7 @@ import 'package:velotask/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:velotask/screens/main_screen.dart';
 import 'package:velotask/theme/app_theme.dart';
+import 'package:velotask/services/autostart_service.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 // 自动跟随系统颜色
@@ -11,6 +12,7 @@ final ValueNotifier<Locale?> localeNotifier = ValueNotifier(null);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AutostartService.initialize();
   final prefs = await SharedPreferences.getInstance();
 
   // Load Theme

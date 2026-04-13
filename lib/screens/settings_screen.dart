@@ -3,7 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:velotask/main.dart';
 import 'package:velotask/screens/tags_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:velotask/services/autostart_service.dart';
 import 'package:velotask/l10n/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -15,11 +17,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String _version = '';
+  bool _autostartEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
+    _loadAutostart();
   }
 
   Future<void> _loadVersion() async {
@@ -36,6 +40,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _version = '1.0.0';
         });
       }
+    }
+  }
+
+  Future<void> _loadAutostart() async {
+    if (!AutostartService.isSupported) return;
+    final enabled = await AutostartService.isEnabled();
+    if (mounted) {
+      setState(() {
+        _autostartEnabled = enabled;
+      });
+    }
+  }
+
+  Future<void> _setAutostart(bool value) async {
+    await AutostartService.setEnabled(value);
+    if (mounted) {
+      setState(() {
+        _autostartEnabled = value;
+      });
     }
   }
 
@@ -96,6 +119,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
+          if (AutostartService.isSupported)
+            SwitchListTile(
+              secondary: const Icon(Icons.rocket_launch_outlined),
+              title: Text(l10n.autostartOnBoot),
+              subtitle: Text(l10n.autostartOnBootSubtitle),
+              value: _autostartEnabled,
+              onChanged: _setAutostart,
+            ),
           const Divider(),
           _buildSectionHeader(context, l10n.organization),
           ListTile(

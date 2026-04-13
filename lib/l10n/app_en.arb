@@ -50,5 +50,7 @@
   "shortWeekdaySat": "Sat",
   "shortWeekdaySun": "Sun",
   "taskTypeTask": "Task",
-  "taskTypeDeadline": "Deadline"
+  "taskTypeDeadline": "Deadline",
+  "autostartOnBoot": "Launch at Startup",
+  "autostartOnBootSubtitle": "Automatically launch when Windows starts"
 }
