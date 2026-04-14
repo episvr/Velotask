@@ -9,16 +9,11 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
-      run_analyze:
-        description: "Run static analysis"
-        required: false
-        type: boolean
-        default: false
       run_builds:
         description: "Build Android/Web/Linux artifacts"
         required: true
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: read
