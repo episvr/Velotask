@@ -67,9 +67,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (rawBaseUrl.isEmpty || apiKey.isEmpty || model.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先填写 API Base URL / API Key / Model')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.aiSettingsValidationError)));
       return;
     }
 
@@ -151,7 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('模型测试成功，可正常调用')));
+      ).showSnackBar(SnackBar(content: Text(l10n.aiTestSuccess)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -466,7 +466,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.play_circle_outline),
-            label: Text(_isTestingModel ? l10n.aiProcessing : '测试模型'),
+            label: Text(_isTestingModel ? l10n.aiProcessing : l10n.aiTestModel),
           ),
           TextButton(
             onPressed: () async {

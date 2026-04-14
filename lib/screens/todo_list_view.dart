@@ -69,6 +69,14 @@ class _TodoListViewState extends State<TodoListView>
   @override
   void didUpdateWidget(covariant TodoListView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (_filterTag != null) {
+      final stillExists = widget.tags.any((t) => t.id == _filterTag!.id);
+      if (!stillExists) {
+        setState(() {
+          _filterTag = null;
+        });
+      }
+    }
     final isAllCompletedNow = _isAllCompleted(widget.todos);
     if (isAllCompletedNow && !_hadAllCompleted) {
       _playConfetti();

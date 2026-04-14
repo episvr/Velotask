@@ -45,7 +45,7 @@ Velotask is a modern, efficient, and user-friendly task management application b
 
 * **Framework**: [Flutter](https://flutter.dev/)
 * **Language**: [Dart](https://dart.dev/)
-* **Database**: [Isar](https://isar.dev/) (v3.1.0)
+* **Database**: [Drift](https://drift.simonbinder.eu/)
 * **Notifications**: [flutter_local_notifications](https://pub.dev/packages/flutter_local_notifications) + [timezone](https://pub.dev/packages/timezone)
 
 ## 🚀 Getting Started
