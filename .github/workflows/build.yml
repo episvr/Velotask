@@ -16,7 +16,7 @@ on:
         default: false
       run_builds:
         description: "Build Android/Web/Linux artifacts"
-        required: false
+        required: true
         type: boolean
         default: false
 
