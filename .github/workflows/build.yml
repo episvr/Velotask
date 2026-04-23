@@ -1,16 +1,10 @@
-name: Flutter CI
+name: Build Release Artifacts 
 
 on:
-  push:
-    branches:
-      - main
-      - master
-      - develop
-  pull_request:
   workflow_dispatch:
     inputs:
       run_builds:
-        description: "Build Android/Web/Linux artifacts"
+        description: "Build Android/Web/Linux/macOS artifacts"
         required: true
         type: boolean
         default: true
@@ -23,19 +17,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  prepare:
-    name: Prepare
+  setup:
+    name: Setup & Code Gen
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -43,254 +30,171 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Cache Dart dependencies and build cache
+      - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: |
             ~/.pub-cache
             .dart_tool
-          key: ${{ runner.os }}-dart-cache-${{ hashFiles('**/pubspec.lock') }}-${{ hashFiles('lib/**/*.dart', 'pubspec.yaml', 'analysis_options.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-dart-cache-${{ hashFiles('**/pubspec.lock') }}-
-            ${{ runner.os }}-dart-cache-
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
 
-      - name: Install dependencies
-        run: flutter pub get
+      - name: Install & Generate
+        run: |
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
 
-      - name: Generate code
-        run: dart run build_runner build --delete-conflicting-outputs
+      - name: Upload temporary workspace
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-generated
+          path: .
+          include-hidden-files: true
+          retention-days: 1
 
   test:
     name: Test
-    needs: prepare
+    needs: setup
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - name: Download workspace
+        uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: "17"
-
+          name: workspace-generated
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
-
-      - name: Cache Dart dependencies and build cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-dart-cache-${{ hashFiles('**/pubspec.lock') }}-${{ hashFiles('lib/**/*.dart', 'pubspec.yaml', 'analysis_options.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-dart-cache-${{ hashFiles('**/pubspec.lock') }}-
-            ${{ runner.os }}-dart-cache-
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Generate code
-        run: dart run build_runner build --delete-conflicting-outputs
-
       - name: Run unit tests
         run: flutter test
 
   build_android:
-    name: Build Android APK
+    name: Build Android
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_builds }}
-    needs: [prepare, test]
+    needs: [setup, test]
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java
+      - name: Download workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace-generated
+      - name: Set up Java & Flutter
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
-
-      - name: Cache Dart dependencies and build cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-dart-cache-${{ hashFiles('**/pubspec.lock') }}-${{ hashFiles('lib/**/*.dart', 'pubspec.yaml', 'analysis_options.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-dart-cache-${{ hashFiles('**/pubspec.lock') }}-
-            ${{ runner.os }}-dart-cache-
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Generate code
-        run: dart run build_runner build --delete-conflicting-outputs
-
-      - name: Build Android APK
+      - name: Build APK
         run: flutter build apk --release
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
-          retention-days: 30
 
   build_web:
     name: Build Web
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_builds }}
-    needs: [prepare, test]
+    needs: [setup, test]
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - name: Download workspace
+        uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+          name: workspace-generated
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
-
-      - name: Cache Dart dependencies and build cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-dart-cache-${{ hashFiles('**/pubspec.lock') }}-${{ hashFiles('lib/**/*.dart', 'pubspec.yaml', 'analysis_options.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-dart-cache-${{ hashFiles('**/pubspec.lock') }}-
-            ${{ runner.os }}-dart-cache-
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Generate code
-        run: dart run build_runner build --delete-conflicting-outputs
-
       - name: Build Web
         run: flutter build web --release
-
-      - name: Upload Web Bundle
+      - name: Upload Web
         uses: actions/upload-artifact@v4
         with:
           name: web-release
           path: build/web
-          if-no-files-found: error
-          retention-days: 30
 
-  build_bundle:
-    name: Build Linux Bundle
+  build_linux:
+    name: Build Linux
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_builds }}
-    needs: [prepare, test]
+    needs: [setup, test]
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Cache Dart dependencies and build cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: ${{ runner.os }}-dart-cache-${{ hashFiles('**/pubspec.lock') }}-${{ hashFiles('lib/**/*.dart', 'pubspec.yaml', 'analysis_options.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-dart-cache-${{ hashFiles('**/pubspec.lock') }}-
-            ${{ runner.os }}-dart-cache-
-
-      - name: Install Linux build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            clang \
-            cmake \
-            ninja-build \
-            pkg-config \
-            libgtk-3-dev \
-            liblzma-dev
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Generate code
-        run: dart run build_runner build --delete-conflicting-outputs
-
-      - name: Build Linux Bundle
-        run: flutter build linux --release
-
-      - name: Upload Linux Bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-bundle
-          path: build/linux/x64/release/bundle
-          if-no-files-found: error
-          retention-days: 30
-
-  build_deb:
-    name: Build Debian package
-    needs: build_bundle
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download Linux bundle artifact
+      - name: Download workspace
         uses: actions/download-artifact@v4
         with:
-          name: linux-bundle
-          path: build/linux/x64/release/bundle
-
-      - name: Install Debian packaging tools
+          name: workspace-generated
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Install Linux deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y dpkg-dev fakeroot
-
-      - name: Build Debian package (.deb)
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+      - name: Build Linux
         run: |
-          chmod +x scripts/build-deb.sh
-          ./scripts/build-deb.sh build/deb
-
-      - name: Upload deb package
+          flutter build linux --release
+          tar -czf linux-bundle.tar.gz -C build/linux/x64/release/bundle .
+      - name: Upload Linux
         uses: actions/upload-artifact@v4
         with:
-          name: linux-deb
-          path: build/deb/*.deb
-          if-no-files-found: error
-          retention-days: 30
+          name: linux-bundle
+          path: linux-bundle.tar.gz
+
+  build_macos:
+    name: Build macOS
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_builds }}
+    needs: [setup, test]
+    runs-on: macos-latest
+    steps:
+      - name: Download workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace-generated
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Build macOS
+        run: |
+          flutter build macos --release
+          cd build/macos/Build/Products/Release
+          tar -czf ${{ github.workspace }}/macos-release.tar.gz .
+      - name: Upload macOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: macos-release.tar.gz
+
+  build_windows:
+      name: Build Windows
+      if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_builds }}
+      needs: [setup, test]
+      runs-on: windows-latest
+      steps:
+        - name: Download workspace
+          uses: actions/download-artifact@v4
+          with:
+            name: workspace-generated
+
+        - name: Set up Flutter
+          uses: subosito/flutter-action@v2
+          with:
+            channel: stable
+            cache: true
+
+        - name: Build Windows
+          run: flutter build windows --release
+
+        - name: Pack Windows Release
+          shell: pwsh
+          run: |
+            # 压缩构建产物文件夹
+            Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath windows-release.zip
+
+        - name: Upload Windows Artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: windows-release
+            path: windows-release.zip
+            if-no-files-found: error
+            retention-days: 30
